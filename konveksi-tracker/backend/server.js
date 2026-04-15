@@ -4,6 +4,9 @@ const path    = require('path');
 
 const app = express();
 
+// ✅ FIX: cukup require database biar auto init
+const db = require('./db/database');
+
 // ─── MIDDLEWARE ───────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
@@ -19,7 +22,8 @@ app.use('/api/dashboard',  require('./routes/dashboard'));
 app.use('/api/users',      require('./routes/users'));
 
 // ─── CATCH ALL → serve frontend SPA ──────────────────────────
-app.get('*', (req, res) => {
+// ─── CATCH ALL → serve frontend SPA ──────────────────────────
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
@@ -32,6 +36,5 @@ app.use((err, req, res, next) => {
 // ─── START ────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`\n🏭 Konveksi Tracker berjalan di http://localhost:${PORT}`);
-  console.log(`📋 API ready at http://localhost:${PORT}/api\n`);
+  console.log(`🏭 Konveksi Tracker berjalan di port ${PORT}`);
 });
