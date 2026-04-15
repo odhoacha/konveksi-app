@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Konveksi Tracker — Production System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0f1117;
+      --surface:  #181c27;
+      --border:   #252a38;
+      --accent:   #f0a500;
+      --accent2:  #3b82f6;
+      --success:  #10b981;
+      --danger:   #ef4444;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+
+    /* Sidebar */
+    #sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; border-radius: 6px;
+      cursor: pointer; transition: all .15s;
+      font-size: 14px; color: var(--muted);
+    }
+    .nav-item:hover { background: var(--border); color: var(--text); }
+    .nav-item.active { background: rgba(240,165,0,.12); color: var(--accent); }
+    .nav-item.active .nav-dot { background: var(--accent); }
+    .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+
+    /* Cards */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
+    .stat-card { border-top: 2px solid var(--accent); }
+
+    /* Badges */
+    .badge-progress { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
+    .badge-done     { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
+    .badge-stage    { background: rgba(240,165,0,.12);  color: var(--accent); border: 1px solid rgba(240,165,0,.2); }
+
+    /* Stage Progress Bar */
+    .stage-track { display: flex; gap: 4px; }
+    .stage-pip {
+      flex: 1; height: 4px; border-radius: 2px;
+      background: var(--border); transition: background .3s;
+    }
+    .stage-pip.done    { background: var(--success); }
+    .stage-pip.current { background: var(--accent); }
+
+    /* Table */
+    table { border-collapse: collapse; width: 100%; }
+    th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
+         padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    tr:last-child td { border-bottom: none; }
+
+    /* Inputs */
+    input, select, textarea {
+      width: 100%; background: var(--bg); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 9px 12px; font-size: 14px;
+      font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border .15s;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+    label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
+    select option { background: var(--surface); }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--accent); color: #000; font-weight: 600;
+      padding: 9px 18px; border-radius: 6px; border: none;
+      cursor: pointer; font-size: 14px; transition: opacity .15s;
+    }
+    .btn-primary:hover { opacity: .85; }
+    .btn-ghost {
+      background: transparent; color: var(--muted); border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all .15s;
+    }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+    .btn-danger {
+      background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.3);
+      padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;
+    }
+
+    /* Toast */
+    #toast {
+      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      padding: 12px 18px; border-radius: 8px; font-size: 13px;
+      transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none;
+      max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { background: rgba(16,185,129,.9); color: #fff; }
+    #toast.error   { background: rgba(239,68,68,.9);   color: #fff; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      backdrop-filter: blur(2px);
+    }
+    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 480px; max-width: 94vw; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Login page */
+    #login-page { background: radial-gradient(ellipse at 30% 50%, rgba(240,165,0,.06) 0%, transparent 60%), var(--bg); }
+
+    /* Animations */
+    .fade-in { animation: fadeIn .2s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Hidden */
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════
+     LOGIN PAGE
+════════════════════════════════════════════════════════════ -->
+<div id="login-page" class="min-h-screen flex items-center justify-center p-4">
+  <div class="w-full max-w-sm">
+    <!-- Logo -->
+    <div class="mb-10 text-center">
+      <div class="inline-flex items-center gap-3 mb-3">
+        <div style="background:var(--accent);width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;">
+          <span style="font-size:18px;">🏭</span>
+        </div>
+        <span class="mono text-xl font-semibold tracking-wide">KONVEKSI<span style="color:var(--accent)">.</span>TRACK</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;">Production Management System</p>
+    </div>
+
+    <div class="card p-7">
+      <h2 class="text-base font-semibold mb-6">Masuk ke Sistem</h2>
+      <div class="space-y-4">
+        <div>
+          <label>Email</label>
+          <input type="email" id="login-email" placeholder="email@konveksi.com" />
+        </div>
+        <div>
+          <label>Password</label>
+          <input type="password" id="login-password" placeholder="••••••••" />
+        </div>
+        <button class="btn-primary w-full mt-2" onclick="login()">Masuk</button>
+      </div>
+      <p id="login-error" class="mt-3 text-sm hidden" style="color:var(--danger)"></p>
+      <div class="mt-5 pt-4" style="border-top:1px solid var(--border)">
+        <p style="font-size:11px;color:var(--muted);" class="mono">Demo: admin@konveksi.com / admin123</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MAIN APP
+════════════════════════════════════════════════════════════ -->
+<div id="app" class="hidden flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="w-56 flex-shrink-0 flex flex-col p-4 overflow-y-auto">
+    <!-- Logo -->
+    <div class="flex items-center gap-2 px-2 mb-8 mt-1">
+      <div style="background:var(--accent);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🏭</div>
+      <span class="mono text-sm font-semibold tracking-wide">KONVEKSI<span style="color:var(--accent)">.</span>TRACK</span>
+    </div>
+
+    <!-- Nav -->
+    <nav class="flex flex-col gap-1 flex-1">
+      <div class="nav-item active" onclick="navigate('dashboard')">
+        <span class="nav-dot"></span> Dashboard
+      </div>
+      <div class="nav-item" onclick="navigate('orders')">
+        <span class="nav-dot"></span> Order
+      </div>
+      <div class="nav-item" onclick="navigate('production')">
+        <span class="nav-dot"></span> Input Produksi
+      </div>
+      <div class="nav-item" onclick="navigate('report')">
+        <span class="nav-dot"></span> Report
+      </div>
+      <div class="nav-item" id="nav-users" onclick="navigate('users')">
+        <span class="nav-dot"></span> Manajemen User
+      </div>
+    </nav>
+
+    <!-- User info -->
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;">
+      <div class="px-2 mb-3">
+        <p id="sidebar-name" class="text-sm font-medium">—</p>
+        <p id="sidebar-role" class="text-xs mt-0.5" style="color:var(--accent)">—</p>
+      </div>
+      <div class="nav-item" onclick="logout()" style="color:var(--danger)">
+        <span style="font-size:14px;">→</span> Keluar
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 overflow-y-auto p-6">
+
+    <!-- ── DASHBOARD ── -->
+    <section id="page-dashboard" class="fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h1 class="text-xl font-semibold">Dashboard</h1>
+          <p id="dash-date" class="text-sm mt-0.5" style="color:var(--muted)"></p>
+        </div>
+        <button class="btn-ghost" onclick="loadDashboard()">↺ Refresh</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 gap-4 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
+        <div class="card stat-card p-5">
+          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Produksi Hari Ini</p>
+          <p id="stat-today" class="mono text-3xl font-semibold" style="color:var(--accent)">—</p>
+          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+        </div>
+        <div class="card p-5" style="border-top:2px solid var(--accent2)">
+          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Minggu Ini</p>
+          <p id="stat-week" class="mono text-3xl font-semibold" style="color:#60a5fa">—</p>
+          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+        </div>
+        <div class="card p-5" style="border-top:2px solid var(--success)">
+          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Bulan Ini</p>
+          <p id="stat-month" class="mono text-3xl font-semibold" style="color:var(--success)">—</p>
+          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+        </div>
+        <div class="card p-5" style="border-top:2px solid #8b5cf6">
+          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Order Aktif / Selesai</p>
+          <p class="mono text-3xl font-semibold" style="color:#a78bfa">
+            <span id="stat-active">—</span><span style="color:var(--muted);font-size:18px"> / </span><span id="stat-done">—</span>
+          </p>
+          <p class="text-xs mt-1" style="color:var(--muted)">total order</p>
+        </div>
+      </div>
+
+      <!-- Active Orders -->
+      <div class="card">
+        <div class="p-4" style="border-bottom:1px solid var(--border)">
+          <h2 class="font-medium text-sm">Order Sedang Berjalan</h2>
+        </div>
+        <div id="active-orders-list" class="divide-y" style="border-color:var(--border)"></div>
+      </div>
+    </section>
+
+    <!-- ── ORDERS ── -->
+    <section id="page-orders" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-semibold">Manajemen Order</h1>
+        <button class="btn-primary" id="btn-add-order" onclick="openOrderModal()">+ Tambah Order</button>
+      </div>
+      <div class="card overflow-hidden">
+        <table>
+          <thead>
+            <tr>
+              <th>Kode Order</th>
+              <th>Produk</th>
+              <th>Target Qty</th>
+              <th>Tahap Saat Ini</th>
+              <th>Status</th>
+              <th>Dibuat</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── PRODUCTION INPUT ── -->
+    <section id="page-production" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-semibold">Input Produksi</h1>
+      </div>
+
+      <div class="grid gap-6" style="grid-template-columns:1fr 1.4fr">
+        <!-- Form -->
+        <div class="card p-5">
+          <h2 class="font-medium text-sm mb-4" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Form Input</h2>
+          <div class="space-y-4">
+            <div>
+              <label>Pilih Order</label>
+              <select id="prod-order" onchange="onOrderSelect()">
+                <option value="">— Pilih Order —</option>
+              </select>
+            </div>
+            <div id="prod-order-info" class="hidden" style="background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:6px;padding:10px 12px;">
+              <p class="text-xs" style="color:var(--muted)">Tahap berikutnya</p>
+              <p id="prod-next-stage" class="font-semibold mt-0.5" style="color:var(--accent)">—</p>
+            </div>
+            <div>
+              <label>Tahap</label>
+              <select id="prod-stage">
+                <option value="">— Pilih Tahap —</option>
+                <option>Potong</option><option>Jahit</option><option>Pasang Kancing</option>
+                <option>Finishing</option><option>QC</option><option>Gosok & Packing</option><option>Gudang</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label>Qty Masuk</label>
+                <input type="number" id="prod-qty-in" min="0" placeholder="0" />
+              </div>
+              <div>
+                <label>Qty Keluar</label>
+                <input type="number" id="prod-qty-out" min="0" placeholder="0" />
+              </div>
+            </div>
+            <div>
+              <label>Keterangan (opsional)</label>
+              <textarea id="prod-note" rows="2" placeholder="Misal: 3 pcs reject, bahan kurang..."></textarea>
+            </div>
+            <button class="btn-primary w-full" onclick="submitProduction()">Simpan Log Produksi</button>
+          </div>
+        </div>
+
+        <!-- Recent logs -->
+        <div class="card overflow-hidden">
+          <div class="p-4" style="border-bottom:1px solid var(--border)">
+            <h2 class="font-medium text-sm">Log Terbaru</h2>
+          </div>
+          <div style="overflow-y:auto;max-height:500px">
+            <table>
+              <thead>
+                <tr>
+                  <th>Waktu</th><th>Order</th><th>Tahap</th><th>Masuk</th><th>Keluar</th><th>Operator</th>
+                </tr>
+              </thead>
+              <tbody id="prod-logs-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── REPORT ── -->
+    <section id="page-report" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-semibold">Report Produksi</h1>
+        <div class="flex gap-2">
+          <button class="btn-ghost" id="rpt-daily"   onclick="loadReport('daily')">Harian</button>
+          <button class="btn-ghost" id="rpt-weekly"  onclick="loadReport('weekly')">Mingguan</button>
+          <button class="btn-ghost" id="rpt-monthly" onclick="loadReport('monthly')">Bulanan</button>
+        </div>
+      </div>
+
+      <!-- Summary per tahap -->
+      <div class="card mb-6">
+        <div class="p-4" style="border-bottom:1px solid var(--border)">
+          <h2 class="font-medium text-sm" id="report-title">—</h2>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Label</th><th>Qty Masuk</th><th>Qty Keluar</th><th>Log Count</th></tr>
+          </thead>
+          <tbody id="report-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Per order -->
+      <div class="card">
+        <div class="p-4" style="border-bottom:1px solid var(--border)">
+          <h2 class="font-medium text-sm">Summary Per Order</h2>
+        </div>
+        <table>
+          <thead>
+            <tr><th>Kode Order</th><th>Produk</th><th>Tahap Selesai</th><th>Total Diproses</th></tr>
+          </thead>
+          <tbody id="report-order-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── USERS ── -->
+    <section id="page-users" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-xl font-semibold">Manajemen User</h1>
+        <button class="btn-primary" onclick="openUserModal()">+ Tambah User</button>
+      </div>
+      <div class="card overflow-hidden">
+        <table>
+          <thead>
+            <tr><th>Nama</th><th>Email</th><th>Role</th><th>Dibuat</th><th></th></tr>
+          </thead>
+          <tbody id="users-tbody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     MODALS
+════════════════════════════════════════════════════════════ -->
+
+<!-- Modal: Add/Edit Order -->
+<div id="modal-order" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 class="font-semibold mb-5" id="modal-order-title">Tambah Order</h3>
+    <div class="space-y-4">
+      <div>
+        <label>Kode Order</label>
+        <input type="text" id="mo-code" placeholder="ORD-2025-006" />
+      </div>
+      <div>
+        <label>Nama Produk</label>
+        <input type="text" id="mo-product" placeholder="Misal: Kemeja Putih Lengan Panjang" />
+      </div>
+      <div>
+        <label>Target Qty</label>
+        <input type="number" id="mo-qty" min="1" placeholder="200" />
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6 justify-end">
+      <button class="btn-ghost" onclick="closeModal('modal-order')">Batal</button>
+      <button class="btn-primary" onclick="saveOrder()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Add/Edit User -->
+<div id="modal-user" class="modal-overlay hidden">
+  <div class="modal-box">
+    <h3 class="font-semibold mb-5" id="modal-user-title">Tambah User</h3>
+    <div class="space-y-4">
+      <div>
+        <label>Nama Lengkap</label>
+        <input type="text" id="mu-name" placeholder="Budi Santoso" />
+      </div>
+      <div>
+        <label>Email</label>
+        <input type="email" id="mu-email" placeholder="budi@konveksi.com" />
+      </div>
+      <div>
+        <label>Password</label>
+        <input type="password" id="mu-password" placeholder="Min. 6 karakter" />
+      </div>
+      <div>
+        <label>Role</label>
+        <select id="mu-role">
+          <option value="operator">Operator</option>
+          <option value="admin">Admin</option>
+          <option value="superadmin">Super Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="flex gap-3 mt-6 justify-end">
+      <button class="btn-ghost" onclick="closeModal('modal-user')">Batal</button>
+      <button class="btn-primary" onclick="saveUser()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Order Detail Modal -->
+<div id="modal-detail" class="modal-overlay hidden">
+  <div class="modal-box" style="width:640px;max-height:80vh;overflow-y:auto">
+    <div class="flex items-center justify-between mb-5">
+      <h3 class="font-semibold" id="modal-detail-title">Detail Order</h3>
+      <button class="btn-ghost" onclick="closeModal('modal-detail')" style="padding:4px 10px">✕</button>
+    </div>
+    <div id="modal-detail-content"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     APP SCRIPT
+════════════════════════════════════════════════════════════ -->
+<script>
+// ── CONFIG ──────────────────────────────────────────────────
+const API = '/api';
+const STAGES = ['Potong','Jahit','Pasang Kancing','Finishing','QC','Gosok & Packing','Gudang'];
+
+// ── STATE ───────────────────────────────────────────────────
+let currentUser = null;
+let editingOrderId = null;
+let editingUserId  = null;
+
+// ── UTILS ───────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function token() { return localStorage.getItem('token'); }
+
+async function api(path, method = 'GET', body) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` }
+  };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Request failed');
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = `show ${type}`;
+  setTimeout(() => { el.className = ''; }, 3500);
+}
+
+function fmtDate(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleDateString('id-ID', { day:'2-digit', month:'short', year:'numeric' });
+}
+function fmtDateTime(str) {
+  if (!str) return '—';
+  return new Date(str).toLocaleString('id-ID', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+function stageBadge(stage) {
+  return `<span class="badge-stage mono" style="font-size:11px;padding:2px 8px;border-radius:4px">${stage || '—'}</span>`;
+}
+
+function closeModal(id) { $(id).classList.add('hidden'); }
+
+// ── AUTH ────────────────────────────────────────────────────
+async function login() {
+  const email    = $('login-email').value.trim();
+  const password = $('login-password').value;
+  const errEl    = $('login-error');
+  errEl.classList.add('hidden');
+
+  try {
+    const data = await fetch(`${API}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    }).then(r => r.json());
+
+    if (data.error) { errEl.textContent = data.error; errEl.classList.remove('hidden'); return; }
+
+    localStorage.setItem('token', data.token);
+    currentUser = data.user;
+    showApp();
+  } catch {
+    errEl.textContent = 'Gagal terhubung ke server';
+    errEl.classList.remove('hidden');
+  }
+}
+
+$('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+
+function logout() {
+  localStorage.removeItem('token');
+  currentUser = null;
+  $('app').classList.add('hidden');
+  $('login-page').classList.remove('hidden');
+  $('login-email').value = '';
+  $('login-password').value = '';
+}
+
+async function checkAuth() {
+  const t = token();
+  if (!t) return;
+  try {
+    const data = await api('/auth/me');
+    currentUser = data.user;
+    showApp();
+  } catch { localStorage.removeItem('token'); }
+}
+
+// ── APP INIT ────────────────────────────────────────────────
+function showApp() {
+  $('login-page').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('sidebar-name').textContent = currentUser.name;
+  $('sidebar-role').textContent = currentUser.role.toUpperCase();
+
+  // Hide users nav if not superadmin
+  if (currentUser.role !== 'superadmin') $('nav-users').classList.add('hidden');
+
+  // Hide add order btn if operator
+  const addBtn = $('btn-add-order');
+  if (currentUser.role === 'operator') addBtn.classList.add('hidden');
+
+  // Set today's date
+  $('dash-date').textContent = new Date().toLocaleDateString('id-ID', { weekday:'long', day:'2-digit', month:'long', year:'numeric' });
+
+  navigate('dashboard');
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+function navigate(page) {
+  document.querySelectorAll('section[id^="page-"]').forEach(s => s.classList.add('hidden'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+  $(`page-${page}`).classList.remove('hidden');
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if (n.textContent.trim().toLowerCase().includes(page === 'dashboard' ? 'dash' : page === 'orders' ? 'order' : page === 'production' ? 'produk' : page === 'report' ? 'report' : 'user'))
+      n.classList.add('active');
+  });
+
+  if (page === 'dashboard')  loadDashboard();
+  if (page === 'orders')     loadOrders();
+  if (page === 'production') loadProductionPage();
+  if (page === 'report')     loadReport('daily');
+  if (page === 'users')      loadUsers();
+}
+
+// ── DASHBOARD ───────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const data = await api('/dashboard');
+    const { stats, activeOrders } = data;
+
+    $('stat-today').textContent  = stats.totalToday.toLocaleString('id-ID');
+    $('stat-week').textContent   = stats.totalWeek.toLocaleString('id-ID');
+    $('stat-month').textContent  = stats.totalMonth.toLocaleString('id-ID');
+    $('stat-active').textContent = stats.ordersOnProgress;
+    $('stat-done').textContent   = stats.ordersSelesai;
+
+    const list = $('active-orders-list');
+    if (!activeOrders.length) {
+      list.innerHTML = `<div class="p-8 text-center" style="color:var(--muted)">Tidak ada order aktif</div>`;
+      return;
+    }
+
+    list.innerHTML = activeOrders.map(o => {
+      const stageIdx = STAGES.indexOf(o.current_stage);
+      const pips = STAGES.map((s, i) => {
+        const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
+        return `<div class="stage-pip ${cls}" title="${s}"></div>`;
+      }).join('');
+
+      return `
+        <div class="p-4 cursor-pointer" onclick="openOrderDetail(${o.id})" style="transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
+          <div class="flex items-start justify-between mb-2">
+            <div>
+              <span class="mono text-xs" style="color:var(--muted)">${o.order_code}</span>
+              <p class="font-medium text-sm mt-0.5">${o.product_name}</p>
+            </div>
+            <div class="text-right">
+              ${stageBadge(o.current_stage || 'Belum mulai')}
+              <p class="text-xs mt-1" style="color:var(--muted)">${(o.current_qty||0).toLocaleString('id-ID')} / ${o.target_qty.toLocaleString('id-ID')} pcs</p>
+            </div>
+          </div>
+          <div class="stage-track mt-2">${pips}</div>
+        </div>
+      `;
+    }).join('');
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ── ORDERS ──────────────────────────────────────────────────
+async function loadOrders() {
+  try {
+    const orders = await api('/orders');
+    const tbody  = $('orders-tbody');
+    tbody.innerHTML = orders.map(o => `
+      <tr>
+        <td class="mono text-xs">${o.order_code}</td>
+        <td class="font-medium">${o.product_name}</td>
+        <td class="mono">${o.target_qty.toLocaleString('id-ID')}</td>
+        <td>${stageBadge(o.current_stage || 'Belum mulai')}</td>
+        <td>
+          <span style="font-size:11px;padding:2px 8px;border-radius:4px" class="${o.status==='selesai'?'badge-done':'badge-progress'}">
+            ${o.status === 'selesai' ? 'Selesai' : 'On Progress'}
+          </span>
+        </td>
+        <td class="text-xs" style="color:var(--muted)">${fmtDate(o.created_at)}</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderDetail(${o.id})">Detail</button>
+            ${currentUser.role !== 'operator' ? `<button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderModal(${o.id},'${o.product_name}',${o.target_qty})">Edit</button>` : ''}
+            ${currentUser.role === 'superadmin' ? `<button class="btn-danger" onclick="deleteOrder(${o.id})">Hapus</button>` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function openOrderModal(id, product, qty) {
+  editingOrderId = id || null;
+  $('modal-order-title').textContent = id ? 'Edit Order' : 'Tambah Order';
+  $('mo-code').value    = '';
+  $('mo-product').value = product || '';
+  $('mo-qty').value     = qty || '';
+  $('mo-code').disabled = !!id;
+  $('modal-order').classList.remove('hidden');
+}
+
+async function saveOrder() {
+  const order_code   = $('mo-code').value.trim();
+  const product_name = $('mo-product').value.trim();
+  const target_qty   = parseInt($('mo-qty').value);
+
+  if (!product_name || !target_qty) return toast('Semua field wajib diisi', 'error');
+
+  try {
+    if (editingOrderId) {
+      await api(`/orders/${editingOrderId}`, 'PUT', { product_name, target_qty });
+      toast('Order berhasil diupdate');
+    } else {
+      if (!order_code) return toast('Kode order wajib diisi', 'error');
+      await api('/orders', 'POST', { order_code, product_name, target_qty });
+      toast('Order berhasil ditambah');
+    }
+    closeModal('modal-order');
+    loadOrders();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteOrder(id) {
+  if (!confirm('Yakin hapus order ini beserta semua log produksinya?')) return;
+  try {
+    await api(`/orders/${id}`, 'DELETE');
+    toast('Order berhasil dihapus');
+    loadOrders();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function openOrderDetail(id) {
+  try {
+    const order = await api(`/orders/${id}`);
+    $('modal-detail-title').textContent = `${order.order_code} — ${order.product_name}`;
+
+    const stageIdx = STAGES.indexOf(order.logs[order.logs.length-1]?.stage);
+    const pips = STAGES.map((s, i) => {
+      const isDone = order.logs.some(l => l.stage === s);
+      const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
+      return `<div style="text-align:center;flex:1">
+        <div class="stage-pip ${cls}" style="margin:0 auto 4px;height:6px"></div>
+        <span style="font-size:9px;color:${isDone?'var(--success)':'var(--muted)'}">${s}</span>
+      </div>`;
+    }).join('');
+
+    const logsHTML = order.logs.length
+      ? `<table style="margin-top:0"><thead><tr><th>Tahap</th><th>Masuk</th><th>Keluar</th><th>Keterangan</th><th>Waktu</th></tr></thead><tbody>
+          ${order.logs.map(l => `<tr>
+            <td>${stageBadge(l.stage)}</td>
+            <td class="mono">${l.qty_in}</td>
+            <td class="mono">${l.qty_out}</td>
+            <td style="color:var(--muted);font-size:12px">${l.note||'—'}</td>
+            <td style="color:var(--muted);font-size:11px">${fmtDateTime(l.created_at)}</td>
+          </tr>`).join('')}
+        </tbody></table>`
+      : `<p style="color:var(--muted);font-size:13px;padding:16px">Belum ada log produksi</p>`;
+
+    $('modal-detail-content').innerHTML = `
+      <div class="grid grid-cols-3 gap-4 mb-5" style="font-size:13px">
+        <div><p style="color:var(--muted);font-size:11px">TARGET QTY</p><p class="mono font-semibold mt-1">${order.target_qty.toLocaleString('id-ID')} pcs</p></div>
+        <div><p style="color:var(--muted);font-size:11px">STATUS</p>
+          <span style="font-size:12px;margin-top:4px;display:inline-block;padding:2px 8px;border-radius:4px" class="${order.status==='selesai'?'badge-done':'badge-progress'}">${order.status==='selesai'?'Selesai':'On Progress'}</span>
+        </div>
+        <div><p style="color:var(--muted);font-size:11px">DIBUAT</p><p class="mt-1" style="font-size:12px">${fmtDate(order.created_at)}</p></div>
+      </div>
+      <div class="flex gap-1 mb-5">${pips}</div>
+      <div class="card overflow-hidden">${logsHTML}</div>
+    `;
+    $('modal-detail').classList.remove('hidden');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ── PRODUCTION ──────────────────────────────────────────────
+async function loadProductionPage() {
+  try {
+    const [orders, logs] = await Promise.all([
+      api('/orders'),
+      api('/production')
+    ]);
+
+    // Populate order select (only on_progress)
+    const sel = $('prod-order');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">— Pilih Order —</option>';
+    orders.filter(o => o.status === 'on_progress').forEach(o => {
+      sel.innerHTML += `<option value="${o.id}">${o.order_code} — ${o.product_name}</option>`;
+    });
+    if (current) sel.value = current;
+
+    // Logs table
+    $('prod-logs-tbody').innerHTML = logs.slice(0, 30).map(l => `
+      <tr>
+        <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
+        <td class="text-xs">${l.order_code}</td>
+        <td>${stageBadge(l.stage)}</td>
+        <td class="mono">${l.qty_in}</td>
+        <td class="mono">${l.qty_out}</td>
+        <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Belum ada log</td></tr>';
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function onOrderSelect() {
+  const orderId = $('prod-order').value;
+  if (!orderId) { $('prod-order-info').classList.add('hidden'); return; }
+
+  try {
+    const order = await api(`/orders/${orderId}`);
+    const lastStage = order.logs[order.logs.length-1]?.stage;
+    const nextIdx   = lastStage ? STAGES.indexOf(lastStage) + 1 : 0;
+    const nextStage = STAGES[nextIdx] || 'SELESAI';
+
+    $('prod-next-stage').textContent = nextStage === 'SELESAI' ? '✅ Semua tahap selesai' : nextStage;
+    $('prod-order-info').classList.remove('hidden');
+
+    // Auto-select next stage
+    if (nextStage !== 'SELESAI') {
+      $('prod-stage').value = nextStage;
+    }
+  } catch {}
+}
+
+async function submitProduction() {
+  const order_id = parseInt($('prod-order').value);
+  const stage    = $('prod-stage').value;
+  const qty_in   = parseInt($('prod-qty-in').value);
+  const qty_out  = parseInt($('prod-qty-out').value);
+  const note     = $('prod-note').value.trim();
+
+  if (!order_id || !stage || isNaN(qty_in) || isNaN(qty_out))
+    return toast('Semua field wajib diisi', 'error');
+
+  try {
+    await api('/production', 'POST', { order_id, stage, qty_in, qty_out, note });
+    toast(`✅ Log produksi (${stage}) berhasil disimpan`);
+
+    // Reset form
+    $('prod-qty-in').value  = '';
+    $('prod-qty-out').value = '';
+    $('prod-note').value    = '';
+    $('prod-order-info').classList.add('hidden');
+    $('prod-order').value   = '';
+    $('prod-stage').value   = '';
+
+    loadProductionPage();
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// ── REPORT ──────────────────────────────────────────────────
+async function loadReport(period) {
+  // Highlight active button
+  ['daily','weekly','monthly'].forEach(p => {
+    const btn = $(`rpt-${p}`);
+    btn.style.background    = p === period ? 'var(--accent)' : '';
+    btn.style.color         = p === period ? '#000' : '';
+    btn.style.borderColor   = p === period ? 'var(--accent)' : '';
+    btn.style.fontWeight    = p === period ? '600' : '';
+  });
+
+  try {
+    const data = await api(`/dashboard/report?period=${period}`);
+    const labels = { daily: 'Hari Ini per Tahap', weekly: '7 Hari Terakhir', monthly: '30 Hari Terakhir' };
+    $('report-title').textContent = labels[period];
+
+    $('report-tbody').innerHTML = data.report.length
+      ? data.report.map(r => `
+          <tr>
+            <td class="font-medium">${r.label}</td>
+            <td class="mono">${(r.total_qty_in||0).toLocaleString('id-ID')}</td>
+            <td class="mono">${(r.total_qty_out||0).toLocaleString('id-ID')}</td>
+            <td class="mono" style="color:var(--muted)">${r.log_count}</td>
+          </tr>`).join('')
+      : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data untuk periode ini</td></tr>`;
+
+    $('report-order-tbody').innerHTML = data.orderSummary.length
+      ? data.orderSummary.map(o => `
+          <tr>
+            <td class="mono text-xs">${o.order_code}</td>
+            <td>${o.product_name}</td>
+            <td class="mono" style="color:var(--accent)">${o.stages_done}</td>
+            <td class="mono">${(o.total_processed||0).toLocaleString('id-ID')} pcs</td>
+          </tr>`).join('')
+      : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data</td></tr>`;
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// ── USERS ───────────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const users = await api('/users');
+    $('users-tbody').innerHTML = users.map(u => `
+      <tr>
+        <td class="font-medium">${u.name}</td>
+        <td class="text-sm" style="color:var(--muted)">${u.email}</td>
+        <td>
+          <span style="font-size:11px;padding:2px 8px;border-radius:4px;
+            background:${u.role==='superadmin'?'rgba(139,92,246,.15)':u.role==='admin'?'rgba(240,165,0,.12)':'rgba(100,116,139,.15)'};
+            color:${u.role==='superadmin'?'#a78bfa':u.role==='admin'?'var(--accent)':'var(--muted)'}">
+            ${u.role}
+          </span>
+        </td>
+        <td class="text-xs" style="color:var(--muted)">${fmtDate(u.created_at)}</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openUserModal(${u.id},'${u.name}','${u.role}')">Edit</button>
+            <button class="btn-danger" onclick="deleteUser(${u.id})">Hapus</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+function openUserModal(id, name, role) {
+  editingUserId = id || null;
+  $('modal-user-title').textContent = id ? 'Edit User' : 'Tambah User';
+  $('mu-name').value     = name || '';
+  $('mu-email').value    = '';
+  $('mu-email').disabled = !!id;
+  $('mu-password').value = '';
+  $('mu-role').value     = role || 'operator';
+  $('modal-user').classList.remove('hidden');
+}
+
+async function saveUser() {
+  const name     = $('mu-name').value.trim();
+  const email    = $('mu-email').value.trim();
+  const password = $('mu-password').value;
+  const role     = $('mu-role').value;
+
+  try {
+    if (editingUserId) {
+      await api(`/users/${editingUserId}`, 'PUT', { name, role, password: password||undefined });
+      toast('User berhasil diupdate');
+    } else {
+      if (!name || !email || !password) return toast('Semua field wajib diisi', 'error');
+      await api('/users', 'POST', { name, email, password, role });
+      toast('User berhasil ditambah');
+    }
+    closeModal('modal-user');
+    loadUsers();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+async function deleteUser(id) {
+  if (!confirm('Yakin hapus user ini?')) return;
+  try {
+    await api(`/users/${id}`, 'DELETE');
+    toast('User berhasil dihapus');
+    loadUsers();
+  } catch (err) { toast(err.message, 'error'); }
+}
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
+});
+
+// ── BOOT ────────────────────────────────────────────────────
+checkAuth();
+</script>
+</body>
+</html>
