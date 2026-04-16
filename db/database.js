@@ -1,14 +1,12 @@
 const { Pool } = require('pg');
 
-// pakai Railway ENV dulu (WAJIB)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
+  connectionString:
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_PUBLIC_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
-// helper query biar semua route tetap bisa pakai db.query
 module.exports = {
   query: (text, params) => pool.query(text, params),
 };
