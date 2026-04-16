@@ -1,18 +1,10 @@
-const low = require('lowdb')
-const FileSync = require('lowdb/adapters/FileSync')
-const path = require('path')
+const { Pool } = require('pg');
 
-const file = path.join(__dirname, 'db.json')
-const adapter = new FileSync(file)
-const db = low(adapter)
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production'
+    ? { rejectUnauthorized: false }
+    : false
+});
 
-// default structure
-db.defaults({
-  users: [],
-  orders: [],
-  production_logs: []
-}).write()
-
-console.log("✅ JSON DB ready")
-
-module.exports = db
+module.exports = pool;
