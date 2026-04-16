@@ -37,10 +37,10 @@ async function initDB() {
       );
     `);
 
-    console.log("🔥 PostgreSQL Tables Ready");
+    console.log("✅ Tables ready");
   } catch (err) {
     console.error("❌ DB Init Error:", err);
-    process.exit(1);
+    throw err;
   }
 }
 

@@ -7,4 +7,6 @@ const pool = new Pool({
     : false
 });
 
-module.exports = pool;
+module.exports = {
+  query: (text, params) => pool.query(text, params)
+};

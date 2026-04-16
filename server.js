@@ -13,7 +13,6 @@ const initDB = require('./db/init');
     console.log("🔥 DATABASE READY");
   } catch (err) {
     console.error("❌ DB ERROR:", err);
-    process.exit(1);
   }
 })();
 
