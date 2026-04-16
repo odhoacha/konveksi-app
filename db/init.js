@@ -39,7 +39,7 @@ async function initDB() {
 
     console.log("✅ Tables ready");
   } catch (err) {
-    console.error("❌ DB Init Error:", err);
+    console.error("❌ DB INIT ERROR:", err);
     throw err;
   }
 }
