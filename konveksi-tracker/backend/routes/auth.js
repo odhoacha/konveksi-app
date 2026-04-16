@@ -7,29 +7,51 @@ const { JWT_SECRET, authenticate } = require('../middleware/auth');
 const router = express.Router();
 
 // POST /api/auth/login
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email || !password)
-    return res.status(400).json({ error: 'Email dan password wajib diisi' });
+router.post('/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!user)
-    return res.status(401).json({ error: 'Email atau password salah' });
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email dan password wajib diisi' });
+    }
 
-  const valid = bcrypt.compareSync(password, user.password);
-  if (!valid)
-    return res.status(401).json({ error: 'Email atau password salah' });
+    const result = await db.query(
+      'SELECT * FROM users WHERE email = $1',
+      [email]
+    );
 
-  const token = jwt.sign(
-    { id: user.id, name: user.name, email: user.email, role: user.role },
-    JWT_SECRET,
-    { expiresIn: '12h' }
-  );
+    const user = result.rows[0];
 
-  res.json({
-    token,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role }
-  });
+    if (!user) {
+      return res.status(401).json({ error: 'Email atau password salah' });
+    }
+
+    const valid = await bcrypt.compare(password, user.password);
+
+    if (!valid) {
+      return res.status(401).json({ error: 'Email atau password salah' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, name: user.name, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '12h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+
+  } catch (err) {
+    console.error('LOGIN ERROR:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // GET /api/auth/me
