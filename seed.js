@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const db = require('./db/database');
 
+console.log("SEED DB:", process.env.DATABASE_URL);
 console.log('🌱 Seeding PostgreSQL database...');
 
 // ─── USERS ───────────────────────────────────────
