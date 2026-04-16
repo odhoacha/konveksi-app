@@ -20,26 +20,24 @@ const initDB = require('./db/init');
 app.use(cors());
 app.use(express.json());
 
-// ─── STATIC FRONTEND ────────────────────
-app.use(express.static(path.join(__dirname, '../frontend')));
+// ─── STATIC FRONTEND ─────────────────────
+app.use(express.static(path.join(__dirname, 'frontend')));
 
-// ─── ROUTES ─────────────────────────────
+// ─── API ROUTES ──────────────────────────
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/production', require('./routes/production'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/users', require('./routes/users'));
 
-// ─── HEALTH CHECK ───────────────────────
+// ─── HEALTH CHECK ────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// ─── SPA CATCH ALL (FIXED) ──────────────
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) return next();
-
-  res.sendFile(path.join(__dirname, '../frontend/index.html'));
+// ─── SPA FALLBACK (FIXED) ────────────────
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/index.html'));
 });
 
 // ─── START ──────────────────────────────
