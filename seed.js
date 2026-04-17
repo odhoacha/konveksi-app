@@ -7,9 +7,8 @@ console.log('🌱 Seeding PostgreSQL database...');
 // ─── USERS ───────────────────────────────────────
 const users = [
   { name: 'Super Admin', email: 'superadmin@konveksi.com', password: 'admin123', role: 'superadmin' },
-  { name: 'Budi Admin', email: 'admin@konveksi.com', password: 'admin123', role: 'admin' },
-  { name: 'Siti Operator', email: 'siti@konveksi.com', password: 'operator123', role: 'operator' },
-  { name: 'Andi Operator', email: 'andi@konveksi.com', password: 'operator123', role: 'operator' },
+  { name: 'Admin', email: 'admin@konveksi.com', password: 'admin123', role: 'admin' },
+  { name: 'Operator', email: 'operator@konveksi.com', password: 'operator123', role: 'operator' },
 ];
 
 async function seedUsers() {
