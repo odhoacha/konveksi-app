@@ -2,30 +2,24 @@ require('dotenv').config();
 
 const bcrypt = require('bcryptjs');
 const db = require('./db/database');
+const initDB = require('./db/init'); // ⬅️ TAMBAH INI
 
-console.log("SEED DB:", process.env.DATABASE_URL);
-console.log('🌱 Seeding PostgreSQL database...');
+async function seed() {
+  try {
+    console.log('🚀 INIT DB...');
+    await initDB(); // ⬅️ JALANKAN INI DULU
 
-// ─── USERS ───────────────────────────────────────
-const users = [
-  { name: 'Super Admin', email: 'superadmin@konveksi.com', password: 'admin123', role: 'superadmin' },
-  { name: 'Admin', email: 'admin@konveksi.com', password: 'admin123', role: 'admin' },
-  { name: 'Operator', email: 'operator@konveksi.com', password: 'operator123', role: 'operator' },
-];
+    console.log('🌱 Seeding...');
 
-async function seedUsers() {
-  for (const u of users) {
-    const hash = await bcrypt.hash(u.password, 10);
+    await seedUsers();
+    await seedOrders();
 
-    await db.query(
-      `INSERT INTO users (name, email, password, role)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (email) DO NOTHING`,
-      [u.name, u.email, hash, u.role]
-    );
+    console.log('🎉 SEED COMPLETE');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ SEED ERROR:', err);
+    process.exit(1);
   }
-
-  console.log('✅ Users seeded');
 }
 
 // ─── ORDERS ───────────────────────────────────────
