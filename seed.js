@@ -1,12 +1,11 @@
-require('dotenv').config();
-
 const bcrypt = require('bcryptjs');
 const db = require('./db/database');
-const initDB = require('./db/init');
+const initDB = require('./db/init'); // ⬅️ ini penting
 
 console.log("SEED DB:", process.env.DATABASE_URL);
+console.log('🌱 Seeding PostgreSQL database...');
 
-// ─── USERS ───────────────────────────────────────
+// USERS
 const users = [
   { name: 'Super Admin', email: 'superadmin@konveksi.com', password: 'admin123', role: 'superadmin' },
   { name: 'Admin', email: 'admin@konveksi.com', password: 'admin123', role: 'admin' },
@@ -28,13 +27,11 @@ async function seedUsers() {
   console.log('✅ Users seeded');
 }
 
-// ─── ORDERS ───────────────────────────────────────
+// ORDERS
 const orders = [
   { code: 'ORD-2025-001', product: 'Kemeja Putih Lengan Panjang', qty: 200 },
   { code: 'ORD-2025-002', product: 'Polo Shirt Navy Bordir', qty: 150 },
   { code: 'ORD-2025-003', product: 'Jaket Hoodie Fleece Abu', qty: 100 },
-  { code: 'ORD-2025-004', product: 'Celana Cargo Hitam', qty: 80 },
-  { code: 'ORD-2025-005', product: 'Seragam SD Putih + Merah', qty: 300 },
 ];
 
 async function seedOrders() {
@@ -50,17 +47,12 @@ async function seedOrders() {
   console.log('✅ Orders seeded');
 }
 
-// ─── MAIN RUNNER ───────────────────────────────────────
+// RUN
 async function seed() {
   try {
-    if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL kosong!");
-    }
+    await initDB(); // ⬅️ PENTING BANGET
+    console.log('🧱 Tables ensured');
 
-    console.log('🚀 INIT DB...');
-    await initDB();
-
-    console.log('🌱 Seeding...');
     await seedUsers();
     await seedOrders();
 
