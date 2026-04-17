@@ -45,4 +45,6 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🏭 Konveksi Tracker running on ${PORT}`);
+  // server.js
+console.log("REDEPLOY TRIGGER");
 });
