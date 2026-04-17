@@ -3,18 +3,7 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
-
 const initDB = require('./db/init');
-
-// ─── INIT DB ─────────────────────────────
-(async () => {
-  try {
-    await initDB();
-    console.log("🔥 DATABASE READY");
-  } catch (err) {
-    console.error("❌ DB ERROR:", err);
-  }
-})();
 
 // ─── MIDDLEWARE ─────────────────────────
 app.use(cors());
@@ -35,16 +24,27 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// ─── SPA FALLBACK (FIXED) ────────────────
+// ─── SPA FALLBACK ────────────────────────
 app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/index.html'));
 });
 
-// ─── START ──────────────────────────────
+// ─── START SERVER (FIX DISINI) ───────────
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🏭 Konveksi Tracker running on ${PORT}`);
-  // server.js
-console.log("REDEPLOY TRIGGER");
-});
+async function startServer() {
+  try {
+    await initDB(); // ⬅️ BLOCK DISINI
+    console.log("🔥 DATABASE READY");
+
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`🏭 Konveksi Tracker running on ${PORT}`);
+    });
+
+  } catch (err) {
+    console.error("❌ GAGAL START SERVER:", err);
+    process.exit(1); // biar railway restart
+  }
+}
+
+startServer();
