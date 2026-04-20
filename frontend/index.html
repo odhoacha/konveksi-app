@@ -252,6 +252,9 @@
         </div>
       </div>
 
+      <!-- TAMBAHAN GUA -->
+      <div class="grid grid-cols-2 gap-4 mb-6" id="stage-stats"></div> 
+
       <!-- Active Orders -->
       <div class="card">
         <div class="p-4" style="border-bottom:1px solid var(--border)">
@@ -535,6 +538,39 @@ function stageBadge(stage) {
 }
 
 function closeModal(id) { $(id).classList.add('hidden'); }
+// -- TAMBAHAN GUA
+
+async function loadStageStats() {
+  try {
+    const start   = $('filter-start').value;
+    const end     = $('filter-end').value;
+    const code    = $('filter-code').value;
+    const product = $('filter-product').value;
+
+    const query = new URLSearchParams({
+      start, end, code, product
+    }).toString();
+
+    const data = await api(`/dashboard/stages?${query}`);
+
+    const container = $('stage-stats');
+
+    if (!data.length) {
+      container.innerHTML = `<div style="color:var(--muted)">Tidak ada data</div>`;
+      return;
+    }
+
+    container.innerHTML = data.map(s => `
+      <div class="card p-4">
+        <p class="text-xs" style="color:var(--muted)">${s.stage}</p>
+        <p class="mono text-xl font-semibold">${parseInt(s.total).toLocaleString('id-ID')} pcs</p>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
 
 // ── AUTH ────────────────────────────────────────────────────
 async function login() {
@@ -661,6 +697,7 @@ async function loadDashboard() {
         </div>
       `;
     }).join('');
+    loadStageStats();
   } catch (err) {
     toast(err.message, 'error');
   }
