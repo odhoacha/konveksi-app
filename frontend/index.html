@@ -156,7 +156,7 @@
         </div>
         <div>
           <label>Password</label>
-          <input type="password" id="login-password" placeholder="••yy••••" />
+          <input type="password" id="login-password" placeholder="••••••" />
         </div>
         <button class="btn-primary w-full mt-2" onclick="login()">Masuk</button>
       </div>
@@ -252,13 +252,22 @@
         </div>
       </div>
 
-      <!-- TAMBAHAN GUA -->
-      <div class="grid grid-cols-2 gap-4 mb-6" id="stage-stats"></div> 
+      <!-- Stage Overview Grid -->
+      <div class="card mb-6">
+        <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid var(--border)">
+          <h2 class="font-medium text-sm">Stage Overview</h2>
+          <span class="text-xs" style="color:var(--muted)">Jumlah order aktif per tahap</span>
+        </div>
+        <div id="stage-overview-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">
+        </div>
+      </div>
 
-      <!-- Active Orders -->
+      <!-- Active Orders with Search -->
       <div class="card">
-        <div class="p-4" style="border-bottom:1px solid var(--border)">
+        <div class="p-4 flex items-center justify-between flex-wrap gap-3" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm">Order Sedang Berjalan</h2>
+          <input id="dash-search" type="text" placeholder="🔍  Cari order atau produk..." oninput="filterActiveOrders()"
+            style="width:240px;padding:6px 10px;font-size:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none"/>
         </div>
         <div id="active-orders-list" class="divide-y" style="border-color:var(--border)"></div>
       </div>
@@ -266,10 +275,37 @@
 
     <!-- ── ORDERS ── -->
     <section id="page-orders" class="hidden fade-in">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-semibold">Manajemen Order</h1>
         <button class="btn-primary" id="btn-add-order" onclick="openOrderModal()">+ Tambah Order</button>
       </div>
+
+      <!-- Filters -->
+      <div class="card p-4 mb-4 flex flex-wrap gap-3 items-end">
+        <div style="flex:1;min-width:180px">
+          <label>Cari Order / Produk</label>
+          <input type="text" id="ord-search" placeholder="Ketik kode atau nama produk..." oninput="applyOrderFilters()"/>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="ord-status" onchange="applyOrderFilters()" style="width:160px">
+            <option value="">Semua Status</option>
+            <option value="on_progress">On Progress</option>
+            <option value="selesai">Selesai</option>
+          </select>
+        </div>
+        <div>
+          <label>Tahap Saat Ini</label>
+          <select id="ord-stage" onchange="applyOrderFilters()" style="width:160px">
+            <option value="">Semua Tahap</option>
+            <option>Belum mulai</option>
+            <option>Cutting</option><option>Sewing</option><option>Buttoning</option>
+            <option>Finishing</option><option>QC</option><option>Packing</option><option>Warehouse</option>
+          </select>
+        </div>
+        <button class="btn-ghost" onclick="clearOrderFilters()">✕ Reset</button>
+      </div>
+
       <div class="card overflow-hidden">
         <table>
           <thead>
@@ -337,8 +373,31 @@
 
         <!-- Recent logs -->
         <div class="card overflow-hidden">
-          <div class="p-4" style="border-bottom:1px solid var(--border)">
-            <h2 class="font-medium text-sm">Log Terbaru</h2>
+          <div class="p-4 flex flex-wrap items-end gap-3" style="border-bottom:1px solid var(--border)">
+            <h2 class="font-medium text-sm" style="margin-right:auto">Log Produksi</h2>
+            <div>
+              <label>Dari Tanggal</label>
+              <input type="date" id="log-date-from" oninput="applyLogFilters()" style="width:145px;font-size:12px"/>
+            </div>
+            <div>
+              <label>Sampai</label>
+              <input type="date" id="log-date-to" oninput="applyLogFilters()" style="width:145px;font-size:12px"/>
+            </div>
+            <div>
+              <label>Tahap</label>
+              <select id="log-stage-filter" onchange="applyLogFilters()" style="width:140px;font-size:12px">
+                <option value="">Semua</option>
+                <option>Cutting</option><option>Sewing</option><option>Buttoning</option>
+                <option>Finishing</option><option>QC</option><option>Packing</option><option>Warehouse</option>
+              </select>
+            </div>
+            <div>
+              <label>Order</label>
+              <select id="log-order-filter" onchange="applyLogFilters()" style="width:160px;font-size:12px">
+                <option value="">Semua Order</option>
+              </select>
+            </div>
+            <button class="btn-ghost" style="font-size:11px;padding:6px 12px" onclick="clearLogFilters()">✕ Reset</button>
           </div>
           <div style="overflow-y:auto;max-height:500px">
             <table>
@@ -538,39 +597,7 @@ function stageBadge(stage) {
 }
 
 function closeModal(id) { $(id).classList.add('hidden'); }
-// -- TAMBAHAN GUA
-
-async function loadStageStats() {
-  try {
-    const start   = $('filter-start').value;
-    const end     = $('filter-end').value;
-    const code    = $('filter-code').value;
-    const product = $('filter-product').value;
-
-    const query = new URLSearchParams({
-      start, end, code, product
-    }).toString();
-
-    const data = await api(`/dashboard/stages?${query}`);
-
-    const container = $('stage-stats');
-
-    if (!data.length) {
-      container.innerHTML = `<div style="color:var(--muted)">Tidak ada data</div>`;
-      return;
-    }
-
-    container.innerHTML = data.map(s => `
-      <div class="card p-4">
-        <p class="text-xs" style="color:var(--muted)">${s.stage}</p>
-        <p class="mono text-xl font-semibold">${parseInt(s.total).toLocaleString('id-ID')} pcs</p>
-      </div>
-    `).join('');
-
-  } catch (err) {
-    toast(err.message, 'error');
-  }
-}
+// (loadStageStats replaced by renderStageOverview)
 
 // ── AUTH ────────────────────────────────────────────────────
 async function login() {
@@ -660,7 +687,7 @@ function navigate(page) {
 async function loadDashboard() {
   try {
     const data = await api('/dashboard');
-    const { stats, activeOrders } = data;
+    const { stats, activeOrders, stageDistribution } = data;
 
     $('stat-today').textContent  = stats.totalToday.toLocaleString('id-ID');
     $('stat-week').textContent   = stats.totalWeek.toLocaleString('id-ID');
@@ -668,36 +695,15 @@ async function loadDashboard() {
     $('stat-active').textContent = stats.ordersOnProgress;
     $('stat-done').textContent   = stats.ordersSelesai;
 
-    const list = $('active-orders-list');
-    if (!activeOrders.length) {
-      list.innerHTML = `<div class="p-8 text-center" style="color:var(--muted)">Tidak ada order aktif</div>`;
-      return;
-    }
+    // Stage overview grid
+    renderStageOverview(stageDistribution);
 
-    list.innerHTML = activeOrders.map(o => {
-      const stageIdx = STAGES.indexOf(o.current_stage);
-      const pips = STAGES.map((s, i) => {
-        const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
-        return `<div class="stage-pip ${cls}" title="${s}"></div>`;
-      }).join('');
+    // Active orders list (store globally for search filter)
+    _allActiveOrders = activeOrders || [];
+    const searchEl = $('dash-search');
+    if (searchEl) searchEl.value = '';
+    renderActiveOrders(_allActiveOrders);
 
-      return `
-        <div class="p-4 cursor-pointer" onclick="openOrderDetail(${o.id})" style="transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
-          <div class="flex items-start justify-between mb-2">
-            <div>
-              <span class="mono text-xs" style="color:var(--muted)">${o.order_code}</span>
-              <p class="font-medium text-sm mt-0.5">${o.product_name}</p>
-            </div>
-            <div class="text-right">
-              ${stageBadge(o.current_stage || 'Belum mulai')}
-              <p class="text-xs mt-1" style="color:var(--muted)">${(o.current_qty||0).toLocaleString('id-ID')} / ${o.target_qty.toLocaleString('id-ID')} pcs</p>
-            </div>
-          </div>
-          <div class="stage-track mt-2">${pips}</div>
-        </div>
-      `;
-    }).join('');
-    loadStageStats();
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -707,28 +713,12 @@ async function loadDashboard() {
 async function loadOrders() {
   try {
     const orders = await api('/orders');
-    const tbody  = $('orders-tbody');
-    tbody.innerHTML = orders.map(o => `
-      <tr>
-        <td class="mono text-xs">${o.order_code}</td>
-        <td class="font-medium">${o.product_name}</td>
-        <td class="mono">${o.target_qty.toLocaleString('id-ID')}</td>
-        <td>${stageBadge(o.current_stage || 'Belum mulai')}</td>
-        <td>
-          <span style="font-size:11px;padding:2px 8px;border-radius:4px" class="${o.status==='selesai'?'badge-done':'badge-progress'}">
-            ${o.status === 'selesai' ? 'Selesai' : 'On Progress'}
-          </span>
-        </td>
-        <td class="text-xs" style="color:var(--muted)">${fmtDate(o.created_at)}</td>
-        <td>
-          <div class="flex gap-2">
-            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderDetail(${o.id})">Detail</button>
-            ${currentUser.role !== 'operator' ? `<button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderModal(${o.id},'${o.product_name}',${o.target_qty})">Edit</button>` : ''}
-            ${currentUser.role === 'superadmin' ? `<button class="btn-danger" onclick="deleteOrder(${o.id})">Hapus</button>` : ''}
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    _allOrders = orders;
+    // reset filters on fresh load
+    if ($('ord-search'))  $('ord-search').value  = '';
+    if ($('ord-status'))  $('ord-status').value  = '';
+    if ($('ord-stage'))   $('ord-stage').value   = '';
+    renderOrdersTable(_allOrders);
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -833,16 +823,21 @@ async function loadProductionPage() {
     });
     if (current) sel.value = current;
 
-    // Logs table
-    $('prod-logs-tbody').innerHTML = logs.slice(0, 30).map(l => `
-      <tr>
-        <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
-        <td class="text-xs">${l.order_code}</td>
-        <td>${stageBadge(l.stage)}</td>
-        <td class="mono">${l.qty_processed}</td>
-        <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Belum ada log</td></tr>';
+    // Populate log order filter dropdown (all orders)
+    const logOrderSel = $('log-order-filter');
+    if (logOrderSel) {
+      const prevVal = logOrderSel.value;
+      logOrderSel.innerHTML = '<option value="">Semua Order</option>';
+      orders.forEach(o => {
+        logOrderSel.innerHTML += `<option value="${o.id}">${o.order_code}</option>`;
+      });
+      logOrderSel.value = prevVal;
+    }
+
+    // Store all logs, render with current filters
+    _allLogs = logs;
+    applyLogFilters();
+
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1050,6 +1045,185 @@ async function deleteUser(id) {
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
 });
+
+
+// ── DASHBOARD: STAGE OVERVIEW ────────────────────────────────
+function renderStageOverview(stageDistribution) {
+  const grid = $('stage-overview-grid');
+  if (!grid) return;
+
+  // Build a map: stage → count
+  const stageMap = {};
+  (stageDistribution || []).forEach(r => { stageMap[r.stage] = r.count; });
+
+  const stageColors = {
+    'Cutting':    '#f0a500',
+    'Sewing':     '#3b82f6',
+    'Buttoning':  '#8b5cf6',
+    'Finishing':  '#06b6d4',
+    'QC':         '#f59e0b',
+    'Packing':    '#10b981',
+    'Warehouse':  '#6b7280',
+  };
+
+  grid.innerHTML = STAGES.map((s, i) => {
+    const count = stageMap[s] || 0;
+    const col   = stageColors[s] || 'var(--accent)';
+    const borderR = i < STAGES.length - 1 ? 'border-right:1px solid var(--border);' : '';
+    return `
+      <div style="padding:16px 10px;text-align:center;${borderR}cursor:pointer;transition:background .15s"
+           onclick="filterOrdersByStage('${s}')"
+           onmouseover="this.style.background='rgba(255,255,255,.03)'"
+           onmouseout="this.style.background=''">
+        <p class="mono" style="font-size:26px;font-weight:700;color:${col};line-height:1">${count}</p>
+        <p style="font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.04em">${s.toUpperCase()}</p>
+        ${count > 0 ? `<div style="width:24px;height:3px;background:${col};border-radius:2px;margin:6px auto 0"></div>` : `<div style="width:24px;height:3px;background:var(--border);border-radius:2px;margin:6px auto 0"></div>`}
+      </div>`;
+  }).join('');
+}
+
+// Called from loadDashboard — store activeOrders globally for client-side filter
+let _allActiveOrders = [];
+
+function renderActiveOrders(orders) {
+  const list = $('active-orders-list');
+  if (!orders.length) {
+    list.innerHTML = `<div class="p-8 text-center" style="color:var(--muted)">Tidak ada order aktif</div>`;
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const stageIdx = STAGES.indexOf(o.current_stage);
+    const pips = STAGES.map((s, i) => {
+      const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
+      return `<div class="stage-pip ${cls}" title="${s}"></div>`;
+    }).join('');
+    return `
+      <div class="p-4 cursor-pointer" onclick="openOrderDetail(${o.id})"
+           style="transition:background .15s"
+           onmouseover="this.style.background='rgba(255,255,255,.02)'"
+           onmouseout="this.style.background=''">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <span class="mono text-xs" style="color:var(--muted)">${o.order_code}</span>
+            <p class="font-medium text-sm mt-0.5">${o.product_name}</p>
+          </div>
+          <div class="text-right">
+            ${stageBadge(o.current_stage || 'Belum mulai')}
+            <p class="text-xs mt-1" style="color:var(--muted)">${(o.current_qty||0).toLocaleString('id-ID')} / ${o.target_qty.toLocaleString('id-ID')} pcs</p>
+          </div>
+        </div>
+        <div class="stage-track mt-2">${pips}</div>
+      </div>`;
+  }).join('');
+}
+
+function filterActiveOrders() {
+  const q = ($('dash-search')?.value || '').toLowerCase();
+  const filtered = q
+    ? _allActiveOrders.filter(o =>
+        o.order_code.toLowerCase().includes(q) ||
+        o.product_name.toLowerCase().includes(q))
+    : _allActiveOrders;
+  renderActiveOrders(filtered);
+}
+
+function filterOrdersByStage(stage) {
+  // Navigate to Orders page and set stage filter
+  navigate('orders');
+  setTimeout(() => {
+    const sel = $('ord-stage');
+    if (sel) { sel.value = stage; applyOrderFilters(); }
+  }, 100);
+}
+
+// ── ORDERS: CLIENT-SIDE FILTER ────────────────────────────────
+let _allOrders = [];
+
+function applyOrderFilters() {
+  const q      = ($('ord-search')?.value || '').toLowerCase();
+  const status = $('ord-status')?.value || '';
+  const stage  = $('ord-stage')?.value  || '';
+
+  let filtered = _allOrders;
+  if (q)      filtered = filtered.filter(o => o.order_code.toLowerCase().includes(q) || o.product_name.toLowerCase().includes(q));
+  if (status) filtered = filtered.filter(o => o.status === status);
+  if (stage)  filtered = filtered.filter(o => (o.current_stage || 'Belum mulai') === stage);
+
+  renderOrdersTable(filtered);
+}
+
+function clearOrderFilters() {
+  if ($('ord-search'))  $('ord-search').value  = '';
+  if ($('ord-status'))  $('ord-status').value  = '';
+  if ($('ord-stage'))   $('ord-stage').value   = '';
+  renderOrdersTable(_allOrders);
+}
+
+function renderOrdersTable(orders) {
+  const tbody = $('orders-tbody');
+  tbody.innerHTML = orders.length
+    ? orders.map(o => `
+      <tr>
+        <td class="mono text-xs">${o.order_code}</td>
+        <td class="font-medium">${o.product_name}</td>
+        <td class="mono">${o.target_qty.toLocaleString('id-ID')}</td>
+        <td>${stageBadge(o.current_stage || 'Belum mulai')}</td>
+        <td>
+          <span style="font-size:11px;padding:2px 8px;border-radius:4px" class="${o.status==='selesai'?'badge-done':'badge-progress'}">
+            ${o.status === 'selesai' ? 'Selesai' : 'On Progress'}
+          </span>
+        </td>
+        <td class="text-xs" style="color:var(--muted)">${fmtDate(o.created_at)}</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderDetail(${o.id})">Detail</button>
+            ${currentUser.role !== 'operator' ? `<button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderModal(${o.id},'${o.product_name}',${o.target_qty},${o.price_per_piece||0})">Edit</button>` : ''}
+            ${currentUser.role === 'superadmin' ? `<button class="btn-danger" onclick="deleteOrder(${o.id})">Hapus</button>` : ''}
+          </div>
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Tidak ada order yang cocok dengan filter</td></tr>`;
+}
+
+// ── PRODUCTION LOG: CLIENT-SIDE FILTER ───────────────────────
+let _allLogs = [];
+
+function applyLogFilters() {
+  const dateFrom = $('log-date-from')?.value || '';
+  const dateTo   = $('log-date-to')?.value   || '';
+  const stage    = $('log-stage-filter')?.value || '';
+  const orderId  = $('log-order-filter')?.value || '';
+
+  let filtered = _allLogs;
+  if (stage)    filtered = filtered.filter(l => l.stage === stage);
+  if (orderId)  filtered = filtered.filter(l => String(l.order_id) === orderId);
+  if (dateFrom) filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) >= dateFrom);
+  if (dateTo)   filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) <= dateTo);
+
+  renderLogTable(filtered);
+}
+
+function clearLogFilters() {
+  if ($('log-date-from'))    $('log-date-from').value    = '';
+  if ($('log-date-to'))      $('log-date-to').value      = '';
+  if ($('log-stage-filter')) $('log-stage-filter').value = '';
+  if ($('log-order-filter')) $('log-order-filter').value = '';
+  renderLogTable(_allLogs);
+}
+
+function renderLogTable(logs) {
+  $('prod-logs-tbody').innerHTML = logs.length
+    ? logs.map(l => `
+      <tr>
+        <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
+        <td class="text-xs">${l.order_code}</td>
+        <td>${stageBadge(l.stage)}</td>
+        <td class="mono">${l.qty_processed}</td>
+        <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
+      </tr>`)
+      .join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Tidak ada log yang cocok</td></tr>';
+}
 
 // ── BOOT ────────────────────────────────────────────────────
 checkAuth();

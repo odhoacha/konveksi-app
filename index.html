@@ -156,14 +156,14 @@
         </div>
         <div>
           <label>Password</label>
-          <input type="password" id="login-password" placeholder="••XX••••" />
+          <input type="password" id="login-password" placeholder="••••••" />
         </div>
         <button class="btn-primary w-full mt-2" onclick="login()">Masuk</button>
       </div>
       <p id="login-error" class="mt-3 text-sm hidden" style="color:var(--danger)"></p>
       <div class="mt-5 pt-4" style="border-top:1px solid var(--border)">
-        <p style="font-size:11px;color:var(--muted);" class="mono">Login Admin: admin@konveksi.com / admin123</p>
-        <p style="font-size:11px;color:var(--muted);" class="mono">Login Operator: admin@konveksi.com / operator123</p>
+        <p style="font-size:11px;color:var(--muted);" class="mono">Admin : admin@konveksi.com / admin123</p>
+        <p style="font-size:11px;color:var(--muted);" class="mono">Operator : operator@konveksi.com / operator123</p>
       </div>
     </div>
   </div>
@@ -252,6 +252,9 @@
         </div>
       </div>
 
+      <!-- TAMBAHAN GUA -->
+      <div class="grid grid-cols-2 gap-4 mb-6" id="stage-stats"></div> 
+
       <!-- Active Orders -->
       <div class="card">
         <div class="p-4" style="border-bottom:1px solid var(--border)">
@@ -310,18 +313,18 @@
               <label>Tahap</label>
               <select id="prod-stage">
                 <option value="">— Pilih Tahap —</option>
-                <option>Potong</option><option>Jahit</option><option>Pasang Kancing</option>
-                <option>Finishing</option><option>QC</option><option>Gosok & Packing</option><option>Gudang</option>
+                <option>Cutting</option><option>Sewing</option><option>Buttoning</option>
+                <option>Finishing</option><option>QC</option><option>Packing</option><option>Warehouse</option>
               </select>
             </div>
             <div class="grid grid-cols-2 gap-3">
               <div>
-                <label>Qty Masuk</label>
-                <input type="number" id="prod-qty-in" min="0" placeholder="0" />
+                <label>Qty Processed</label>
+                <input type="number" id="prod-qty-processed" min="1" placeholder="0" />
               </div>
-              <div>
-                <label>Qty Keluar</label>
-                <input type="number" id="prod-qty-out" min="0" placeholder="0" />
+              <div id="prod-remaining-wrap" class="hidden">
+                <label>Sisa Kapasitas</label>
+                <div id="prod-remaining" style="padding:9px 12px;background:rgba(240,165,0,.06);border:1px solid rgba(240,165,0,.2);border-radius:6px;font-size:14px;color:var(--accent)" class="mono">—</div>
               </div>
             </div>
             <div>
@@ -341,7 +344,7 @@
             <table>
               <thead>
                 <tr>
-                  <th>Waktu</th><th>Order</th><th>Tahap</th><th>Masuk</th><th>Keluar</th><th>Operator</th>
+                  <th>Waktu</th><th>Order</th><th>Tahap</th><th>Diproses</th><th>Operator</th>
                 </tr>
               </thead>
               <tbody id="prod-logs-tbody"></tbody>
@@ -369,7 +372,7 @@
         </div>
         <table>
           <thead>
-            <tr><th>Label</th><th>Qty Masuk</th><th>Qty Keluar</th><th>Log Count</th></tr>
+            <tr><th>Label</th><th>Total Qty Diproses</th><th>Log Count</th></tr>
           </thead>
           <tbody id="report-tbody"></tbody>
         </table>
@@ -490,7 +493,7 @@
 <script>
 // ── CONFIG ──────────────────────────────────────────────────
 const API = '/api';
-const STAGES = ['Potong','Jahit','Pasang Kancing','Finishing','QC','Gosok & Packing','Gudang'];
+const STAGES = ['Cutting','Sewing','Buttoning','Finishing','QC','Packing','Warehouse'];
 
 // ── STATE ───────────────────────────────────────────────────
 let currentUser = null;
@@ -535,6 +538,39 @@ function stageBadge(stage) {
 }
 
 function closeModal(id) { $(id).classList.add('hidden'); }
+// -- TAMBAHAN GUA
+
+async function loadStageStats() {
+  try {
+    const start   = $('filter-start').value;
+    const end     = $('filter-end').value;
+    const code    = $('filter-code').value;
+    const product = $('filter-product').value;
+
+    const query = new URLSearchParams({
+      start, end, code, product
+    }).toString();
+
+    const data = await api(`/dashboard/stages?${query}`);
+
+    const container = $('stage-stats');
+
+    if (!data.length) {
+      container.innerHTML = `<div style="color:var(--muted)">Tidak ada data</div>`;
+      return;
+    }
+
+    container.innerHTML = data.map(s => `
+      <div class="card p-4">
+        <p class="text-xs" style="color:var(--muted)">${s.stage}</p>
+        <p class="mono text-xl font-semibold">${parseInt(s.total).toLocaleString('id-ID')} pcs</p>
+      </div>
+    `).join('');
+
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
 
 // ── AUTH ────────────────────────────────────────────────────
 async function login() {
@@ -661,6 +697,7 @@ async function loadDashboard() {
         </div>
       `;
     }).join('');
+    loadStageStats();
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -740,9 +777,12 @@ async function openOrderDetail(id) {
     const order = await api(`/orders/${id}`);
     $('modal-detail-title').textContent = `${order.order_code} — ${order.product_name}`;
 
-    const stageIdx = STAGES.indexOf(order.logs[order.logs.length-1]?.stage);
+    const stageIdx = STAGES.indexOf(
+      [...order.logs].reverse().find(l => l)?.stage
+    );
     const pips = STAGES.map((s, i) => {
-      const isDone = order.logs.some(l => l.stage === s);
+      const stageTotal = order.logs.filter(l => l.stage === s).reduce((a,l) => a + l.qty_processed, 0);
+      const isDone = stageTotal > 0;
       const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
       return `<div style="text-align:center;flex:1">
         <div class="stage-pip ${cls}" style="margin:0 auto 4px;height:6px"></div>
@@ -751,11 +791,10 @@ async function openOrderDetail(id) {
     }).join('');
 
     const logsHTML = order.logs.length
-      ? `<table style="margin-top:0"><thead><tr><th>Tahap</th><th>Masuk</th><th>Keluar</th><th>Keterangan</th><th>Waktu</th></tr></thead><tbody>
+      ? `<table style="margin-top:0"><thead><tr><th>Tahap</th><th>Diproses</th><th>Keterangan</th><th>Waktu</th></tr></thead><tbody>
           ${order.logs.map(l => `<tr>
             <td>${stageBadge(l.stage)}</td>
-            <td class="mono">${l.qty_in}</td>
-            <td class="mono">${l.qty_out}</td>
+            <td class="mono">${l.qty_processed}</td>
             <td style="color:var(--muted);font-size:12px">${l.note||'—'}</td>
             <td style="color:var(--muted);font-size:11px">${fmtDateTime(l.created_at)}</td>
           </tr>`).join('')}
@@ -800,55 +839,102 @@ async function loadProductionPage() {
         <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
         <td class="text-xs">${l.order_code}</td>
         <td>${stageBadge(l.stage)}</td>
-        <td class="mono">${l.qty_in}</td>
-        <td class="mono">${l.qty_out}</td>
+        <td class="mono">${l.qty_processed}</td>
         <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
       </tr>
-    `).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">Belum ada log</td></tr>';
+    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Belum ada log</td></tr>';
   } catch (err) { toast(err.message, 'error'); }
 }
 
 async function onOrderSelect() {
   const orderId = $('prod-order').value;
-  if (!orderId) { $('prod-order-info').classList.add('hidden'); return; }
+  if (!orderId) {
+    $('prod-order-info').classList.add('hidden');
+    $('prod-remaining-wrap').classList.add('hidden');
+    return;
+  }
 
   try {
     const order = await api(`/orders/${orderId}`);
-    const lastStage = order.logs[order.logs.length-1]?.stage;
-    const nextIdx   = lastStage ? STAGES.indexOf(lastStage) + 1 : 0;
-    const nextStage = STAGES[nextIdx] || 'SELESAI';
 
-    $('prod-next-stage').textContent = nextStage === 'SELESAI' ? '✅ Semua tahap selesai' : nextStage;
-    $('prod-order-info').classList.remove('hidden');
+    // Build totals per stage from logs
+    const stageTotals = {};
+    STAGES.forEach(s => stageTotals[s] = 0);
+    order.logs.forEach(l => {
+      if (stageTotals[l.stage] !== undefined) stageTotals[l.stage] += l.qty_processed;
+    });
 
-    // Auto-select next stage
-    if (nextStage !== 'SELESAI') {
-      $('prod-stage').value = nextStage;
+    // Find furthest stage that has been started (has any logs)
+    let furthestIdx = -1;
+    STAGES.forEach((s, i) => { if (stageTotals[s] > 0) furthestIdx = i; });
+
+    // Next stage = furthest started (if not yet capped) OR furthest+1
+    // Any stage where (prev total > current total) can still receive input
+    let suggestedStage = STAGES[0]; // default: Cutting
+    if (furthestIdx >= 0) {
+      const furthest = STAGES[furthestIdx];
+      const prevTotal = furthestIdx === 0 ? order.target_qty : stageTotals[STAGES[furthestIdx - 1]];
+      // If furthest stage still has room, suggest it; otherwise suggest next
+      if (stageTotals[furthest] < prevTotal) {
+        suggestedStage = furthest;
+      } else if (furthestIdx + 1 < STAGES.length) {
+        suggestedStage = STAGES[furthestIdx + 1];
+      } else {
+        suggestedStage = null; // all done
+      }
     }
+
+    if (!suggestedStage) {
+      $('prod-next-stage').textContent = '✅ Semua tahap sudah selesai';
+      $('prod-order-info').classList.remove('hidden');
+      $('prod-remaining-wrap').classList.add('hidden');
+      return;
+    }
+
+    $('prod-next-stage').textContent = suggestedStage;
+    $('prod-order-info').classList.remove('hidden');
+    $('prod-stage').value = suggestedStage;
+
+    // Show remaining capacity
+    updateRemainingCapacity(stageTotals, order.target_qty, suggestedStage);
   } catch {}
 }
 
-async function submitProduction() {
-  const order_id = parseInt($('prod-order').value);
-  const stage    = $('prod-stage').value;
-  const qty_in   = parseInt($('prod-qty-in').value);
-  const qty_out  = parseInt($('prod-qty-out').value);
-  const note     = $('prod-note').value.trim();
+function updateRemainingCapacity(stageTotals, targetQty, stage) {
+  const stageIdx = STAGES.indexOf(stage);
+  if (stageIdx < 0) return;
 
-  if (!order_id || !stage || isNaN(qty_in) || isNaN(qty_out))
+  const prevTotal   = stageIdx === 0 ? targetQty : (stageTotals[STAGES[stageIdx - 1]] || 0);
+  const currentTotal = stageTotals[stage] || 0;
+  const remaining   = prevTotal - currentTotal;
+
+  $('prod-remaining').textContent = `${remaining} pcs`;
+  $('prod-remaining-wrap').classList.remove('hidden');
+}
+
+async function submitProduction() {
+  const order_id     = parseInt($('prod-order').value);
+  const stage        = $('prod-stage').value;
+  const qty_processed = parseInt($('prod-qty-processed').value);
+  const note         = $('prod-note').value.trim();
+
+  if (!order_id || !stage || isNaN(qty_processed))
     return toast('Semua field wajib diisi', 'error');
 
+  if (qty_processed <= 0)
+    return toast('Qty Processed harus lebih dari 0', 'error');
+
   try {
-    await api('/production', 'POST', { order_id, stage, qty_in, qty_out, note });
+    await api('/production', 'POST', { order_id, stage, qty_processed, note });
     toast(`✅ Log produksi (${stage}) berhasil disimpan`);
 
     // Reset form
-    $('prod-qty-in').value  = '';
-    $('prod-qty-out').value = '';
-    $('prod-note').value    = '';
+    $('prod-qty-processed').value = '';
+    $('prod-note').value = '';
     $('prod-order-info').classList.add('hidden');
-    $('prod-order').value   = '';
-    $('prod-stage').value   = '';
+    $('prod-remaining-wrap').classList.add('hidden');
+    $('prod-order').value = '';
+    $('prod-stage').value = '';
 
     loadProductionPage();
   } catch (err) {
@@ -876,18 +962,17 @@ async function loadReport(period) {
       ? data.report.map(r => `
           <tr>
             <td class="font-medium">${r.label}</td>
-            <td class="mono">${(r.total_qty_in||0).toLocaleString('id-ID')}</td>
-            <td class="mono">${(r.total_qty_out||0).toLocaleString('id-ID')}</td>
+            <td class="mono">${(r.total_qty_processed||0).toLocaleString('id-ID')}</td>
             <td class="mono" style="color:var(--muted)">${r.log_count}</td>
           </tr>`).join('')
-      : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data untuk periode ini</td></tr>`;
+      : `<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data untuk periode ini</td></tr>`;
 
     $('report-order-tbody').innerHTML = data.orderSummary.length
       ? data.orderSummary.map(o => `
           <tr>
             <td class="mono text-xs">${o.order_code}</td>
             <td>${o.product_name}</td>
-            <td class="mono" style="color:var(--accent)">${o.stages_done}</td>
+            <td class="mono" style="color:var(--accent)">${o.log_count}</td>
             <td class="mono">${(o.total_processed||0).toLocaleString('id-ID')} pcs</td>
           </tr>`).join('')
       : `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:24px">Tidak ada data</td></tr>`;
