@@ -18,6 +18,8 @@
       --danger:   #ef4444;
       --text:     #e2e8f0;
       --muted:    #64748b;
+      --sidebar-w: 220px;
+      --topbar-h:  56px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -25,32 +27,85 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
     }
     .mono { font-family: 'IBM Plex Mono', monospace; }
 
-    /* Sidebar */
-    #sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+    /* ── LAYOUT ── */
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── SIDEBAR (desktop) ── */
+    #sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      transition: transform .25s ease;
+      z-index: 200;
+    }
+
+    /* ── MOBILE TOPBAR ── */
+    #topbar {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 300;
+    }
+    #menu-btn {
+      background: none; border: none; color: var(--text);
+      font-size: 22px; cursor: pointer; padding: 6px; line-height: 1;
+    }
+    #topbar-title { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; }
+
+    /* ── OVERLAY for mobile sidebar ── */
+    #sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 190;
+      backdrop-filter: blur(2px);
+    }
+    #sidebar-overlay.show { display: block; }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* ── NAV ITEMS ── */
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; border-radius: 6px;
       cursor: pointer; transition: all .15s;
       font-size: 14px; color: var(--muted);
+      user-select: none;
     }
     .nav-item:hover { background: var(--border); color: var(--text); }
     .nav-item.active { background: rgba(240,165,0,.12); color: var(--accent); }
     .nav-item.active .nav-dot { background: var(--accent); }
     .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 
-    /* Cards */
+    /* ── CARDS ── */
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
     .stat-card { border-top: 2px solid var(--accent); }
 
-    /* Badges */
+    /* ── BADGES ── */
     .badge-progress { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
     .badge-done     { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
     .badge-stage    { background: rgba(240,165,0,.12);  color: var(--accent); border: 1px solid rgba(240,165,0,.2); }
 
-    /* Stage Progress Bar */
+    /* ── STAGE TRACK ── */
     .stage-track { display: flex; gap: 4px; }
     .stage-pip {
       flex: 1; height: 4px; border-radius: 2px;
@@ -59,74 +114,141 @@
     .stage-pip.done    { background: var(--success); }
     .stage-pip.current { background: var(--accent); }
 
-    /* Table */
-    table { border-collapse: collapse; width: 100%; }
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { border-collapse: collapse; width: 100%; min-width: 520px; }
     th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
-         padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
-    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+         padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:hover td { background: rgba(255,255,255,.02); }
     tr:last-child td { border-bottom: none; }
 
-    /* Inputs */
+    /* ── INPUTS ── */
     input, select, textarea {
       width: 100%; background: var(--bg); border: 1px solid var(--border);
       color: var(--text); border-radius: 6px; padding: 9px 12px; font-size: 14px;
       font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border .15s;
+      -webkit-appearance: none; appearance: none;
     }
     input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
     select option { background: var(--surface); }
 
-    /* Buttons */
+    /* ── BUTTONS ── */
     .btn-primary {
       background: var(--accent); color: #000; font-weight: 600;
-      padding: 9px 18px; border-radius: 6px; border: none;
+      padding: 10px 18px; border-radius: 6px; border: none;
       cursor: pointer; font-size: 14px; transition: opacity .15s;
+      touch-action: manipulation;
     }
     .btn-primary:hover { opacity: .85; }
     .btn-ghost {
       background: transparent; color: var(--muted); border: 1px solid var(--border);
       padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all .15s;
+      touch-action: manipulation;
     }
     .btn-ghost:hover { border-color: var(--text); color: var(--text); }
     .btn-danger {
       background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.3);
       padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;
+      touch-action: manipulation;
     }
 
-    /* Toast */
+    /* ── TOAST ── */
     #toast {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      position: fixed; bottom: 20px; right: 16px; left: 16px; z-index: 9999;
       padding: 12px 18px; border-radius: 8px; font-size: 13px;
-      transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none;
-      max-width: 320px;
+      transform: translateY(100px); opacity: 0; transition: all .3s; pointer-events: none;
+      max-width: 360px; margin: 0 auto;
     }
     #toast.show { transform: translateY(0); opacity: 1; }
-    #toast.success { background: rgba(16,185,129,.9); color: #fff; }
-    #toast.error   { background: rgba(239,68,68,.9);   color: #fff; }
+    #toast.success { background: rgba(16,185,129,.95); color: #fff; }
+    #toast.error   { background: rgba(239,68,68,.95);   color: #fff; }
 
-    /* Modal */
+    /* ── MODAL ── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      display: flex; align-items: flex-end; justify-content: center; z-index: 1000;
       backdrop-filter: blur(2px);
     }
-    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 480px; max-width: 94vw; }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0;
+      padding: 24px 20px 32px;
+      width: 100%; max-width: 100%;
+      max-height: 92vh; overflow-y: auto;
+    }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* Login page */
+    /* ── LOGIN PAGE ── */
     #login-page { background: radial-gradient(ellipse at 30% 50%, rgba(240,165,0,.06) 0%, transparent 60%), var(--bg); }
 
-    /* Animations */
+    /* ── ANIMATIONS ── */
     .fade-in { animation: fadeIn .2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Hidden */
+    /* ── HIDDEN ── */
     .hidden { display: none !important; }
+
+    /* ── PRODUCTION GRID (form + logs side by side on tablet+) ── */
+    .prod-grid { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── FILTER BARS: stack on mobile ── */
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .filter-bar > * { min-width: 0; }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE BREAKPOINTS
+    ═══════════════════════════════════════════════ */
+
+    /* ── TABLET+ (≥ 640px): show sidebar, hide topbar ── */
+    @media (min-width: 640px) {
+      #topbar { display: none !important; }
+      #sidebar { display: flex !important; transform: none !important; position: relative; }
+      #sidebar-overlay { display: none !important; }
+      main { padding: 24px; }
+      .modal-overlay { align-items: center; }
+      .modal-box { border-radius: 12px; padding: 28px; width: 520px; max-width: 94vw; max-height: 88vh; }
+      .prod-grid { flex-direction: row; }
+      .prod-grid > *:first-child { width: 340px; flex-shrink: 0; }
+      .prod-grid > *:last-child  { flex: 1; min-width: 0; }
+    }
+
+    /* ── MOBILE (< 640px): bottom-sheet sidebar, topbar ── */
+    @media (max-width: 639px) {
+      #topbar { display: flex; }
+      #app { padding-top: var(--topbar-h); }
+      #sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: 260px;
+        transform: translateX(-100%);
+      }
+      #sidebar.open { transform: translateX(0); }
+      main { padding: 14px 12px 80px; }
+      .stat-num { font-size: 2rem !important; }
+      /* Stage overview: 4 cols on mobile */
+      #stage-overview-grid { grid-template-columns: repeat(4, 1fr) !important; }
+      /* Tables: horizontal scroll */
+      .card.overflow-hidden { overflow: visible; }
+      .table-wrap { overflow-x: auto; border-radius: 10px; }
+      /* Filter bars: full width each */
+      .filter-bar > div { width: 100%; }
+      .filter-bar input,
+      .filter-bar select { width: 100% !important; }
+      /* Buttons in filter: full width */
+      .filter-bar .btn-ghost { width: 100%; text-align: center; }
+      /* Hide some less-important table cols on very small */
+      .col-hide-xs { display: none; }
+    }
+
+    @media (max-width: 380px) {
+      #stage-overview-grid { grid-template-columns: repeat(4, 1fr) !important; font-size: 9px; }
+    }
   </style>
 </head>
 <body>
@@ -172,10 +294,19 @@
 <!-- ═══════════════════════════════════════════════════════════
      MAIN APP
 ════════════════════════════════════════════════════════════ -->
-<div id="app" class="hidden flex h-screen overflow-hidden">
+<!-- Mobile topbar -->
+<div id="topbar">
+  <button id="menu-btn" onclick="toggleSidebar()">☰</button>
+  <span id="topbar-title" class="mono" style="font-size:14px;font-weight:600">KONVEKSI<span style="color:var(--accent)">.</span>TRACK</span>
+  <span id="topbar-page" style="font-size:12px;color:var(--muted)"></span>
+</div>
+<!-- Sidebar overlay (mobile tap-to-close) -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="app" class="hidden">
 
   <!-- SIDEBAR -->
-  <aside id="sidebar" class="w-56 flex-shrink-0 flex flex-col p-4 overflow-y-auto">
+  <aside id="sidebar">
     <!-- Logo -->
     <div class="flex items-center gap-2 px-2 mb-8 mt-1">
       <div style="background:var(--accent);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🏭</div>
@@ -184,19 +315,19 @@
 
     <!-- Nav -->
     <nav class="flex flex-col gap-1 flex-1">
-      <div class="nav-item active" onclick="navigate('dashboard')">
+      <div class="nav-item active" onclick="navigate('dashboard');closeSidebar()">
         <span class="nav-dot"></span> Dashboard
       </div>
-      <div class="nav-item" onclick="navigate('orders')">
+      <div class="nav-item" onclick="navigate('orders');closeSidebar()">
         <span class="nav-dot"></span> Order
       </div>
-      <div class="nav-item" onclick="navigate('production')">
+      <div class="nav-item" onclick="navigate('production');closeSidebar()">
         <span class="nav-dot"></span> Input Produksi
       </div>
-      <div class="nav-item" onclick="navigate('report')">
+      <div class="nav-item" onclick="navigate('report');closeSidebar()">
         <span class="nav-dot"></span> Report
       </div>
-      <div class="nav-item" id="nav-users" onclick="navigate('users')">
+      <div class="nav-item" id="nav-users" onclick="navigate('users');closeSidebar()">
         <span class="nav-dot"></span> Manajemen User
       </div>
     </nav>
@@ -214,10 +345,10 @@
   </aside>
 
   <!-- MAIN CONTENT -->
-  <main class="flex-1 overflow-y-auto p-6">
+  <main class="flex-1 overflow-y-auto">
 
     <!-- ── DASHBOARD ── -->
-    <section id="page-dashboard" class="fade-in">
+    <section id="page-dashboard" class="fade-in" style="padding-bottom:16px">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl font-semibold">Dashboard</h1>
@@ -230,22 +361,22 @@
       <div class="grid grid-cols-2 gap-4 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
         <div class="card stat-card p-5">
           <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Produksi Hari Ini</p>
-          <p id="stat-today" class="mono text-3xl font-semibold" style="color:var(--accent)">—</p>
+          <p id="stat-today" class="mono text-3xl font-semibold stat-num" style="color:var(--accent)">—</p>
           <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
         </div>
         <div class="card p-5" style="border-top:2px solid var(--accent2)">
           <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Minggu Ini</p>
-          <p id="stat-week" class="mono text-3xl font-semibold" style="color:#60a5fa">—</p>
+          <p id="stat-week" class="mono text-3xl font-semibold stat-num" style="color:#60a5fa">—</p>
           <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
         </div>
         <div class="card p-5" style="border-top:2px solid var(--success)">
           <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Bulan Ini</p>
-          <p id="stat-month" class="mono text-3xl font-semibold" style="color:var(--success)">—</p>
+          <p id="stat-month" class="mono text-3xl font-semibold stat-num" style="color:var(--success)">—</p>
           <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
         </div>
         <div class="card p-5" style="border-top:2px solid #8b5cf6">
           <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Order Aktif / Selesai</p>
-          <p class="mono text-3xl font-semibold" style="color:#a78bfa">
+          <p class="mono text-3xl font-semibold stat-num" style="color:#a78bfa">
             <span id="stat-active">—</span><span style="color:var(--muted);font-size:18px"> / </span><span id="stat-done">—</span>
           </p>
           <p class="text-xs mt-1" style="color:var(--muted)">total order</p>
@@ -281,7 +412,7 @@
       </div>
 
       <!-- Filters -->
-      <div class="card p-4 mb-4 flex flex-wrap gap-3 items-end">
+      <div class="card p-4 mb-4 filter-bar">
         <div style="flex:1;min-width:180px">
           <label>Cari Order / Produk</label>
           <input type="text" id="ord-search" placeholder="Ketik kode atau nama produk..." oninput="applyOrderFilters()"/>
@@ -306,7 +437,8 @@
         <button class="btn-ghost" onclick="clearOrderFilters()">✕ Reset</button>
       </div>
 
-      <div class="card overflow-hidden">
+      <div class="card">
+        <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -321,6 +453,7 @@
           </thead>
           <tbody id="orders-tbody"></tbody>
         </table>
+        </div>
       </div>
     </section>
 
@@ -330,7 +463,7 @@
         <h1 class="text-xl font-semibold">Input Produksi</h1>
       </div>
 
-      <div class="grid gap-6" style="grid-template-columns:1fr 1.4fr">
+      <div class="prod-grid">
         <!-- Form -->
         <div class="card p-5">
           <h2 class="font-medium text-sm mb-4" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Form Input</h2>
@@ -429,12 +562,12 @@
         <div class="p-4" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm" id="report-title">—</h2>
         </div>
-        <table>
+        <div class="table-wrap"><table>
           <thead>
             <tr><th>Label</th><th>Total Qty Diproses</th><th>Log Count</th></tr>
           </thead>
           <tbody id="report-tbody"></tbody>
-        </table>
+        </table></div>
       </div>
 
       <!-- Per order -->
@@ -442,12 +575,12 @@
         <div class="p-4" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm">Summary Per Order</h2>
         </div>
-        <table>
+        <div class="table-wrap"><table>
           <thead>
             <tr><th>Kode Order</th><th>Produk</th><th>Tahap Selesai</th><th>Total Diproses</th></tr>
           </thead>
           <tbody id="report-order-tbody"></tbody>
-        </table>
+        </table></div>
       </div>
     </section>
 
@@ -629,7 +762,9 @@ $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') lo
 function logout() {
   localStorage.removeItem('token');
   currentUser = null;
+  $('app').style.display = 'none';
   $('app').classList.add('hidden');
+  closeSidebar();
   $('login-page').classList.remove('hidden');
   $('login-email').value = '';
   $('login-password').value = '';
@@ -648,7 +783,9 @@ async function checkAuth() {
 // ── APP INIT ────────────────────────────────────────────────
 function showApp() {
   $('login-page').classList.add('hidden');
-  $('app').classList.remove('hidden');
+  const appEl = $('app');
+  appEl.style.display = 'flex';
+  appEl.classList.remove('hidden');
   $('sidebar-name').textContent = currentUser.name;
   $('sidebar-role').textContent = currentUser.role.toUpperCase();
 
@@ -671,6 +808,14 @@ function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   $(`page-${page}`).classList.remove('hidden');
+
+  // Update mobile topbar page label
+  const pageLabels = {
+    dashboard:'Dashboard', orders:'Order', production:'Input Produksi',
+    report:'Report', users:'Users', seamstresses:'Penjahit'
+  };
+  const tpp = $('topbar-page');
+  if (tpp) tpp.textContent = pageLabels[page] || '';
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.trim().toLowerCase().includes(page === 'dashboard' ? 'dash' : page === 'orders' ? 'order' : page === 'production' ? 'produk' : page === 'report' ? 'report' : 'user'))
       n.classList.add('active');
@@ -1223,6 +1368,25 @@ function renderLogTable(logs) {
       </tr>`)
       .join('')
     : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Tidak ada log yang cocok</td></tr>';
+}
+
+
+// ── MOBILE SIDEBAR ───────────────────────────────────────────
+function toggleSidebar() {
+  const sb  = $('sidebar');
+  const ov  = $('sidebar-overlay');
+  const open = sb.classList.contains('open');
+  if (open) { closeSidebar(); } else { openSidebar(); }
+}
+function openSidebar() {
+  $('sidebar').classList.add('open');
+  $('sidebar-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebar-overlay').classList.remove('show');
+  document.body.style.overflow = '';
 }
 
 // ── BOOT ────────────────────────────────────────────────────
