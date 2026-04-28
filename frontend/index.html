@@ -851,18 +851,18 @@ function navigate(page) {
 // ── DASHBOARD ───────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const [dashData] = await Promise.all([
-      api('/dashboard'),
-      loadTodayReport()
-    ]);
+    // Fire both independently — loadTodayReport manages its own DOM
+    loadTodayReport(); // non-blocking, no await needed
 
-    const { activeOrders, stageDistribution } = dashData;
+    const dashData = await api('/dashboard');
+    const activeOrders     = dashData.activeOrders     || [];
+    const stageDistribution = dashData.stageDistribution || [];
 
     // Stage overview grid
     renderStageOverview(stageDistribution);
 
-    // Active orders list (store globally for search filter)
-    _allActiveOrders = activeOrders || [];
+    // Active orders list
+    _allActiveOrders = activeOrders;
     const searchEl = $('dash-search');
     if (searchEl) searchEl.value = '';
     renderActiveOrders(_allActiveOrders);
