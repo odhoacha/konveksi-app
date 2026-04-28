@@ -176,4 +176,68 @@ router.get('/report', async (req, res) => {
   }
 });
 
+
+// GET /api/dashboard/today — real-time today activity feed
+router.get('/today', async (req, res) => {
+  try {
+    // Every log entry from today, with order + operator info
+    const logsRes = await db.query(`
+      SELECT
+        pl.id,
+        pl.stage,
+        pl.qty_processed,
+        pl.note,
+        pl.created_at,
+        o.order_code,
+        o.product_name,
+        o.target_qty,
+        u.name AS operator_name,
+        -- cumulative processed per order up to this log
+        SUM(pl.qty_processed) OVER (
+          PARTITION BY pl.order_id
+          ORDER BY pl.id
+          ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS cumulative_order
+      FROM production_logs pl
+      JOIN orders o ON o.id = pl.order_id
+      LEFT JOIN users u ON u.id = pl.created_by
+      WHERE DATE(pl.created_at AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
+      ORDER BY pl.created_at DESC
+    `);
+
+    // Summary: total pcs + unique orders + unique stages touched today
+    const summaryRes = await db.query(`
+      SELECT
+        COALESCE(SUM(qty_processed), 0)             AS total_pcs,
+        COUNT(DISTINCT order_id)                     AS total_orders,
+        COUNT(DISTINCT stage)                        AS total_stages,
+        COUNT(*)                                     AS total_logs
+      FROM production_logs
+      WHERE DATE(created_at AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
+    `);
+
+    // Per-stage breakdown today
+    const stagesRes = await db.query(`
+      SELECT
+        stage,
+        SUM(qty_processed) AS total_pcs,
+        COUNT(*)           AS log_count
+      FROM production_logs
+      WHERE DATE(created_at AT TIME ZONE 'Asia/Jakarta') = CURRENT_DATE AT TIME ZONE 'Asia/Jakarta'
+      GROUP BY stage
+      ORDER BY MIN(created_at)
+    `);
+
+    res.json({
+      summary: summaryRes.rows[0],
+      logs:    logsRes.rows,
+      stages:  stagesRes.rows
+    });
+
+  } catch (err) {
+    console.error('TODAY ERROR:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 module.exports = router;

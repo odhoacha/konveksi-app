@@ -357,29 +357,49 @@
         <button class="btn-ghost" onclick="loadDashboard()">↺ Refresh</button>
       </div>
 
-      <!-- Stats -->
-      <div class="grid grid-cols-2 gap-4 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
-        <div class="card stat-card p-5">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Produksi Hari Ini</p>
-          <p id="stat-today" class="mono text-3xl font-semibold stat-num" style="color:var(--accent)">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+      <!-- Today Activity Report -->
+      <div class="card mb-6" id="today-report-card">
+
+        <!-- Header -->
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <h2 class="font-semibold text-sm" style="display:flex;align-items:center;gap:8px">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(16,185,129,.2)" id="live-dot"></span>
+              Aktivitas Hari Ini
+            </h2>
+            <p style="font-size:11px;color:var(--muted);margin-top:2px" id="today-updated">—</p>
+          </div>
+          <button class="btn-ghost" onclick="loadTodayReport()" style="font-size:12px;padding:5px 12px">↺ Refresh</button>
         </div>
-        <div class="card p-5" style="border-top:2px solid var(--accent2)">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Minggu Ini</p>
-          <p id="stat-week" class="mono text-3xl font-semibold stat-num" style="color:#60a5fa">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+
+        <!-- 4 summary pills -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
+          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
+            <p class="mono stat-num" id="td-pcs" style="font-size:1.8rem;font-weight:700;color:var(--accent)">—</p>
+            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Pcs Diproses</p>
+          </div>
+          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
+            <p class="mono stat-num" id="td-orders" style="font-size:1.8rem;font-weight:700;color:#60a5fa">—</p>
+            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Order Aktif</p>
+          </div>
+          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
+            <p class="mono stat-num" id="td-stages" style="font-size:1.8rem;font-weight:700;color:var(--success)">—</p>
+            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Tahap Aktif</p>
+          </div>
+          <div style="padding:14px 12px;text-align:center">
+            <p class="mono stat-num" id="td-logs" style="font-size:1.8rem;font-weight:700;color:#8b5cf6">—</p>
+            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Total Log</p>
+          </div>
         </div>
-        <div class="card p-5" style="border-top:2px solid var(--success)">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Bulan Ini</p>
-          <p id="stat-month" class="mono text-3xl font-semibold stat-num" style="color:var(--success)">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+
+        <!-- Stage pills (which stages ran today) -->
+        <div id="td-stage-pills" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);min-height:44px">
+          <span style="color:var(--muted);font-size:12px;align-self:center">Memuat...</span>
         </div>
-        <div class="card p-5" style="border-top:2px solid #8b5cf6">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Order Aktif / Selesai</p>
-          <p class="mono text-3xl font-semibold stat-num" style="color:#a78bfa">
-            <span id="stat-active">—</span><span style="color:var(--muted);font-size:18px"> / </span><span id="stat-done">—</span>
-          </p>
-          <p class="text-xs mt-1" style="color:var(--muted)">total order</p>
+
+        <!-- Activity feed: today's logs -->
+        <div id="td-feed" style="max-height:340px;overflow-y:auto">
+          <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Memuat aktivitas...</div>
         </div>
       </div>
 
@@ -831,14 +851,12 @@ function navigate(page) {
 // ── DASHBOARD ───────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const data = await api('/dashboard');
-    const { stats, activeOrders, stageDistribution } = data;
+    const [dashData] = await Promise.all([
+      api('/dashboard'),
+      loadTodayReport()
+    ]);
 
-    $('stat-today').textContent  = stats.totalToday.toLocaleString('id-ID');
-    $('stat-week').textContent   = stats.totalWeek.toLocaleString('id-ID');
-    $('stat-month').textContent  = stats.totalMonth.toLocaleString('id-ID');
-    $('stat-active').textContent = stats.ordersOnProgress;
-    $('stat-done').textContent   = stats.ordersSelesai;
+    const { activeOrders, stageDistribution } = dashData;
 
     // Stage overview grid
     renderStageOverview(stageDistribution);
@@ -1389,8 +1407,118 @@ function closeSidebar() {
   document.body.style.overflow = '';
 }
 
+
+// ── TODAY ACTIVITY REPORT ────────────────────────────────────
+const STAGE_COLORS = {
+  Cutting:'#f0a500', Sewing:'#3b82f6', Buttoning:'#8b5cf6',
+  Finishing:'#06b6d4', QC:'#f59e0b', Packing:'#10b981', Warehouse:'#6b7280'
+};
+
+let _todayAutoRefresh = null;
+
+async function loadTodayReport() {
+  try {
+    const data = await api('/dashboard/today');
+    const { summary, logs, stages } = data;
+
+    // ── Update timestamp
+    const now = new Date();
+    $('today-updated').textContent =
+      'Diperbarui ' + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+    // ── 4 summary numbers
+    $('td-pcs').textContent    = parseInt(summary.total_pcs   || 0).toLocaleString('id-ID');
+    $('td-orders').textContent = parseInt(summary.total_orders || 0).toLocaleString('id-ID');
+    $('td-stages').textContent = parseInt(summary.total_stages || 0).toLocaleString('id-ID');
+    $('td-logs').textContent   = parseInt(summary.total_logs  || 0).toLocaleString('id-ID');
+
+    // ── Stage pills
+    const pillsEl = $('td-stage-pills');
+    if (!stages.length) {
+      pillsEl.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada produksi hari ini</span>';
+    } else {
+      pillsEl.innerHTML = stages.map(s => {
+        const col = STAGE_COLORS[s.stage] || 'var(--muted)';
+        return `<span style="
+          display:inline-flex;align-items:center;gap:5px;
+          padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;
+          background:${col}20;color:${col};border:1px solid ${col}40">
+          <span style="font-weight:700">${s.stage}</span>
+          <span style="opacity:.8">${parseInt(s.total_pcs).toLocaleString('id-ID')} pcs</span>
+        </span>`;
+      }).join('');
+    }
+
+    // ── Activity feed
+    const feedEl = $('td-feed');
+    if (!logs.length) {
+      feedEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
+      return;
+    }
+
+    feedEl.innerHTML = logs.map((l, idx) => {
+      const col    = STAGE_COLORS[l.stage] || 'var(--muted)';
+      const time   = new Date(l.created_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+      const isLast = idx === logs.length - 1;
+
+      return `
+        <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:${isLast ? 'none' : '1px solid var(--border)'}">
+
+          <!-- Timeline dot -->
+          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px">
+            <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;margin-top:2px"></div>
+            ${!isLast ? `<div style="width:1px;flex:1;background:var(--border);margin-top:4px"></div>` : ''}
+          </div>
+
+          <!-- Content -->
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+              <div style="min-width:0">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+                  <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:${col}20;color:${col};border:1px solid ${col}40;white-space:nowrap">${l.stage}</span>
+                  <span class="mono" style="font-size:13px;font-weight:700;color:var(--text)">${parseInt(l.qty_processed).toLocaleString('id-ID')} pcs</span>
+                </div>
+                <p style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.product_name}</p>
+                <p class="mono" style="font-size:10px;color:var(--muted);margin-top:1px">${l.order_code}</p>
+              </div>
+              <div style="text-align:right;flex-shrink:0">
+                <p class="mono" style="font-size:12px;font-weight:600;color:var(--text)">${time}</p>
+                <p style="font-size:10px;color:var(--muted);margin-top:1px">${l.operator_name || '—'}</p>
+              </div>
+            </div>
+            ${l.note ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${l.note}</p>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Pulse the live dot
+function startLivePulse() {
+  let on = true;
+  setInterval(() => {
+    const dot = $('live-dot');
+    if (dot) { dot.style.opacity = on ? '1' : '0.3'; on = !on; }
+  }, 1200);
+}
+
 // ── BOOT ────────────────────────────────────────────────────
 checkAuth();
+
+// Start live dot pulse after page loads
+window.addEventListener('load', () => {
+  startLivePulse();
+  // Auto-refresh today report every 60 seconds when on dashboard
+  setInterval(() => {
+    const dashPage = $('page-dashboard');
+    if (dashPage && !dashPage.classList.contains('hidden')) {
+      loadTodayReport();
+    }
+  }, 60000);
+});
 </script>
 </body>
 </html>
