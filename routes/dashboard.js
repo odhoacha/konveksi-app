@@ -180,9 +180,7 @@ router.get('/report', async (req, res) => {
 // GET /api/dashboard/today — real-time today activity feed (WIB = UTC+7)
 router.get('/today', async (req, res) => {
   try {
-    // Use + INTERVAL '7 hours' cast to ::date — safe on Railway PostgreSQL (no timezone extension needed)
-    const todayFilter = `(created_at + INTERVAL '7 hours')::date = (NOW() + INTERVAL '7 hours')::date`;
-
+    // Always prefix created_at with table alias to avoid ambiguity in JOINs
     const logsRes = await db.query(`
       SELECT
         pl.id,
@@ -197,7 +195,7 @@ router.get('/today', async (req, res) => {
       FROM production_logs pl
       JOIN orders o ON o.id = pl.order_id
       LEFT JOIN users u ON u.id = pl.created_by
-      WHERE ${todayFilter}
+      WHERE (pl.created_at + INTERVAL '7 hours')::date = (NOW() + INTERVAL '7 hours')::date
       ORDER BY pl.created_at DESC
     `);
 
@@ -208,7 +206,7 @@ router.get('/today', async (req, res) => {
         COUNT(DISTINCT stage)            AS total_stages,
         COUNT(*)                         AS total_logs
       FROM production_logs
-      WHERE ${todayFilter}
+      WHERE (created_at + INTERVAL '7 hours')::date = (NOW() + INTERVAL '7 hours')::date
     `);
 
     const stagesRes = await db.query(`
@@ -217,7 +215,7 @@ router.get('/today', async (req, res) => {
         SUM(qty_processed) AS total_pcs,
         COUNT(*)           AS log_count
       FROM production_logs
-      WHERE ${todayFilter}
+      WHERE (created_at + INTERVAL '7 hours')::date = (NOW() + INTERVAL '7 hours')::date
       GROUP BY stage
       ORDER BY MIN(created_at)
     `);
