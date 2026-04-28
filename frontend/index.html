@@ -231,8 +231,8 @@
       #sidebar.open { transform: translateX(0); }
       main { padding: 14px 12px 80px; }
       .stat-num { font-size: 2rem !important; }
-      /* Stage overview: 4 cols on mobile */
-      #stage-overview-grid { grid-template-columns: repeat(4, 1fr) !important; }
+      /* Stage grids: 4 cols on mobile */
+      #stage-overview-grid, #td-stage-grid { grid-template-columns: repeat(4, 1fr) !important; }
       /* Tables: horizontal scroll */
       .card.overflow-hidden { overflow: visible; }
       .table-wrap { overflow-x: auto; border-radius: 10px; }
@@ -372,29 +372,9 @@
           <button class="btn-ghost" onclick="loadTodayReport()" style="font-size:12px;padding:5px 12px">↺ Refresh</button>
         </div>
 
-        <!-- 4 summary pills -->
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid var(--border)">
-          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
-            <p class="mono stat-num" id="td-pcs" style="font-size:1.8rem;font-weight:700;color:var(--accent)">—</p>
-            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Pcs Diproses</p>
-          </div>
-          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
-            <p class="mono stat-num" id="td-orders" style="font-size:1.8rem;font-weight:700;color:#60a5fa">—</p>
-            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Order Aktif</p>
-          </div>
-          <div style="padding:14px 12px;text-align:center;border-right:1px solid var(--border)">
-            <p class="mono stat-num" id="td-stages" style="font-size:1.8rem;font-weight:700;color:var(--success)">—</p>
-            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Tahap Aktif</p>
-          </div>
-          <div style="padding:14px 12px;text-align:center">
-            <p class="mono stat-num" id="td-logs" style="font-size:1.8rem;font-weight:700;color:#8b5cf6">—</p>
-            <p style="font-size:10px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em">Total Log</p>
-          </div>
-        </div>
-
-        <!-- Stage pills (which stages ran today) -->
-        <div id="td-stage-pills" style="padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--border);min-height:44px">
-          <span style="color:var(--muted);font-size:12px;align-self:center">Memuat...</span>
+        <!-- Today Stage Grid — same style as Stage Overview but today-only pcs -->
+        <div id="td-stage-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-bottom:1px solid var(--border)">
+          <!-- filled by renderTodayStageGrid() -->
         </div>
 
         <!-- Activity feed: today's logs -->
@@ -1414,6 +1394,57 @@ const STAGE_COLORS = {
   Finishing:'#06b6d4', QC:'#f59e0b', Packing:'#10b981', Warehouse:'#6b7280'
 };
 
+// Render today-only stage grid (7 cols, same visual as Stage Overview)
+function renderTodayStageGrid(stages) {
+  const grid = $('td-stage-grid');
+  if (!grid) return;
+
+  // Build lookup: stage → { total_pcs, log_count }
+  const map = {};
+  (stages || []).forEach(s => { map[s.stage] = s; });
+
+  const hasAny = stages && stages.length > 0;
+
+  grid.innerHTML = STAGES.map((stage, i) => {
+    const col      = STAGE_COLORS[stage] || '#6b7280';
+    const data     = map[stage];
+    const pcs      = data ? parseInt(data.total_pcs) : 0;
+    const logs     = data ? parseInt(data.log_count) : 0;
+    const active   = !!data;
+    const borderR  = i < STAGES.length - 1 ? 'border-right:1px solid var(--border);' : '';
+
+    return `
+      <div style="padding:14px 8px;text-align:center;${borderR}position:relative;transition:background .15s"
+           onmouseover="this.style.background='rgba(255,255,255,.03)'"
+           onmouseout="this.style.background=''">
+        <!-- active indicator bar at top -->
+        <div style="height:3px;border-radius:2px;margin-bottom:10px;background:${active ? col : 'var(--border)'}"></div>
+
+        <!-- pcs number -->
+        <p class="mono" style="font-size:1.4rem;font-weight:700;line-height:1;color:${active ? col : 'var(--border)'}">
+          ${active ? pcs.toLocaleString('id-ID') : '—'}
+        </p>
+        <p style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.04em">pcs</p>
+
+        <!-- stage name -->
+        <p style="font-size:9px;font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:.05em;color:${active ? col : 'var(--muted)'}">
+          ${stage}
+        </p>
+
+        <!-- log count badge -->
+        ${active ? `<p style="font-size:9px;color:var(--muted);margin-top:3px">${logs} log</p>` : '<p style="font-size:9px;color:var(--border);margin-top:3px">—</p>'}
+      </div>`;
+  }).join('');
+
+  // Show "no activity" message in feed if nothing today
+  if (!hasAny) {
+    const feedEl = $('td-feed');
+    if (feedEl && !feedEl.innerHTML.includes('Belum ada')) {
+      feedEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
+    }
+  }
+}
+
 let _todayAutoRefresh = null;
 
 async function loadTodayReport() {
@@ -1426,28 +1457,8 @@ async function loadTodayReport() {
     $('today-updated').textContent =
       'Diperbarui ' + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
-    // ── 4 summary numbers
-    $('td-pcs').textContent    = parseInt(summary.total_pcs   || 0).toLocaleString('id-ID');
-    $('td-orders').textContent = parseInt(summary.total_orders || 0).toLocaleString('id-ID');
-    $('td-stages').textContent = parseInt(summary.total_stages || 0).toLocaleString('id-ID');
-    $('td-logs').textContent   = parseInt(summary.total_logs  || 0).toLocaleString('id-ID');
-
-    // ── Stage pills
-    const pillsEl = $('td-stage-pills');
-    if (!stages.length) {
-      pillsEl.innerHTML = '<span style="color:var(--muted);font-size:12px">Belum ada produksi hari ini</span>';
-    } else {
-      pillsEl.innerHTML = stages.map(s => {
-        const col = STAGE_COLORS[s.stage] || 'var(--muted)';
-        return `<span style="
-          display:inline-flex;align-items:center;gap:5px;
-          padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;
-          background:${col}20;color:${col};border:1px solid ${col}40">
-          <span style="font-weight:700">${s.stage}</span>
-          <span style="opacity:.8">${parseInt(s.total_pcs).toLocaleString('id-ID')} pcs</span>
-        </span>`;
-      }).join('');
-    }
+    // ── Today stage grid (same look as Stage Overview, but today-only pcs per stage)
+    renderTodayStageGrid(stages);
 
     // ── Activity feed
     const feedEl = $('td-feed');
