@@ -327,6 +327,9 @@
       <div class="nav-item" onclick="navigate('report');closeSidebar()">
         <span class="nav-dot"></span> Report
       </div>
+      <div class="nav-item" id="nav-shopee" onclick="navigate('shopee');closeSidebar()">
+        <span class="nav-dot"></span> Stok Shopee
+      </div>
       <div class="nav-item" id="nav-users" onclick="navigate('users');closeSidebar()">
         <span class="nav-dot"></span> Manajemen User
       </div>
@@ -378,8 +381,36 @@
         </div>
 
         <!-- Activity feed: today's logs -->
-        <div id="td-feed" style="max-height:340px;overflow-y:auto">
+        <div style="padding:10px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)">
+          <p id="td-feed-label" style="font-size:12px;font-weight:500;color:var(--muted)">Semua Aktivitas Hari Ini</p>
+          <p style="font-size:10px;color:var(--border)">↑ klik tahap untuk filter</p>
+        </div>
+        <div id="td-feed" style="max-height:320px;overflow-y:auto">
           <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Memuat aktivitas...</div>
+        </div>
+      </div>
+
+      <!-- Shopee Stock Alert Widget -->
+      <div class="card mb-6" id="shopee-stock-card">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Shopee_logo.svg/120px-Shopee_logo.svg.png" 
+                 style="height:18px;opacity:.9" alt="Shopee"/>
+            <div>
+              <h2 class="font-semibold text-sm">Stok Toko Shopee</h2>
+              <p style="font-size:11px;color:var(--muted);margin-top:1px" id="shopee-updated">—</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--danger)"></span> Stok rendah (&lt; min)
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-left:8px"></span> Perlu perhatian
+            </div>
+            <button class="btn-ghost" onclick="loadShopeeStock()" style="font-size:12px;padding:5px 12px">↺ Refresh</button>
+          </div>
+        </div>
+        <div id="shopee-stock-body">
+          <div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">Memuat stok Shopee...</div>
         </div>
       </div>
 
@@ -597,6 +628,30 @@
           </thead>
           <tbody id="users-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+
+    <!-- ── SHOPEE STOCK ── -->
+    <section id="page-shopee" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-xl font-semibold">Stok Toko Shopee</h1>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">koncoturuu — data real-time dari Shopee</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div>
+            <label style="font-size:11px">Stok Minimum Alert</label>
+            <input type="number" id="shopee-min-global" value="10" min="1" style="width:80px"
+              onchange="saveMinStock()" />
+          </div>
+          <button class="btn-primary" onclick="loadShopeeStock()">↺ Refresh Stok</button>
+        </div>
+      </div>
+
+      <!-- Per-product cards -->
+      <div id="shopee-products-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+        <div style="color:var(--muted);font-size:13px;padding:24px">Memuat...</div>
       </div>
     </section>
 
@@ -833,6 +888,7 @@ async function loadDashboard() {
   try {
     // Fire both independently — loadTodayReport manages its own DOM
     loadTodayReport(); // non-blocking, no await needed
+    loadShopeeStock(); // non-blocking, no await needed
 
     const dashData = await api('/dashboard');
     const activeOrders     = dashData.activeOrders     || [];
@@ -1395,6 +1451,9 @@ const STAGE_COLORS = {
 };
 
 // Render today-only stage grid (7 cols, same visual as Stage Overview)
+// Track which stage is currently selected (null = show all)
+let _todaySelectedStage = null;
+
 function renderTodayStageGrid(stages) {
   const grid = $('td-stage-grid');
   if (!grid) return;
@@ -1411,32 +1470,53 @@ function renderTodayStageGrid(stages) {
     const pcs      = data ? parseInt(data.total_pcs) : 0;
     const logs     = data ? parseInt(data.log_count) : 0;
     const active   = !!data;
+    const selected = _todaySelectedStage === stage;
     const borderR  = i < STAGES.length - 1 ? 'border-right:1px solid var(--border);' : '';
 
+    // Selected: filled bg with stage color tint; active: clickable; inactive: dimmed
+    const bgStyle  = selected
+      ? `background:${col}18;`
+      : '';
+    const cursor   = active ? 'cursor:pointer;' : 'cursor:default;';
+    const ringStyle = selected
+      ? `box-shadow:inset 0 -2px 0 ${col};`
+      : '';
+
     return `
-      <div style="padding:14px 8px;text-align:center;${borderR}position:relative;transition:background .15s"
-           onmouseover="this.style.background='rgba(255,255,255,.03)'"
-           onmouseout="this.style.background=''">
+      <div data-stage="${stage}"
+           style="padding:14px 8px;text-align:center;${borderR}${bgStyle}${ringStyle}${cursor}position:relative;transition:background .15s,box-shadow .15s;user-select:none"
+           onclick="toggleStageFilter('${stage}', ${active})"
+           onmouseover="if(${active})this.style.background='${col}10'"
+           onmouseout="this.style.background='${selected ? col + '18' : ''}'">
+
         <!-- active indicator bar at top -->
-        <div style="height:3px;border-radius:2px;margin-bottom:10px;background:${active ? col : 'var(--border)'}"></div>
+        <div style="height:3px;border-radius:2px;margin-bottom:10px;
+             background:${active ? col : 'var(--border)'};
+             ${selected ? 'opacity:1' : 'opacity:.7'}"></div>
 
         <!-- pcs number -->
-        <p class="mono" style="font-size:1.4rem;font-weight:700;line-height:1;color:${active ? col : 'var(--border)'}">
+        <p class="mono" style="font-size:1.4rem;font-weight:700;line-height:1;
+           color:${active ? col : 'var(--border)'}">
           ${active ? pcs.toLocaleString('id-ID') : '—'}
         </p>
         <p style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.04em">pcs</p>
 
         <!-- stage name -->
-        <p style="font-size:9px;font-weight:600;margin-top:6px;text-transform:uppercase;letter-spacing:.05em;color:${active ? col : 'var(--muted)'}">
+        <p style="font-size:9px;font-weight:600;margin-top:6px;text-transform:uppercase;
+           letter-spacing:.05em;color:${active ? col : 'var(--border)'}">
           ${stage}
         </p>
 
-        <!-- log count badge -->
-        ${active ? `<p style="font-size:9px;color:var(--muted);margin-top:3px">${logs} log</p>` : '<p style="font-size:9px;color:var(--border);margin-top:3px">—</p>'}
+        <!-- log count / selected label -->
+        ${active
+          ? selected
+            ? `<p style="font-size:9px;font-weight:600;color:${col};margin-top:3px">▲ filter aktif</p>`
+            : `<p style="font-size:9px;color:var(--muted);margin-top:3px">${logs} log · klik</p>`
+          : '<p style="font-size:9px;color:var(--border);margin-top:3px">—</p>'}
       </div>`;
   }).join('');
 
-  // Show "no activity" message in feed if nothing today
+  // Show "no activity" message if nothing today
   if (!hasAny) {
     const feedEl = $('td-feed');
     if (feedEl && !feedEl.innerHTML.includes('Belum ada')) {
@@ -1445,62 +1525,112 @@ function renderTodayStageGrid(stages) {
   }
 }
 
+// Toggle stage filter on activity feed
+function toggleStageFilter(stage, active) {
+  if (!active) return; // inactive stages are not clickable
+
+  if (_todaySelectedStage === stage) {
+    // Second click → deselect, show all
+    _todaySelectedStage = null;
+  } else {
+    _todaySelectedStage = stage;
+  }
+
+  // Re-render grid to update selected state
+  // Rebuild from stored stages data
+  const stagesData = _todayStagesCache || [];
+  renderTodayStageGrid(stagesData);
+
+  // Re-render feed with filter
+  renderTodayFeed(_todayLogsCache || [], _todaySelectedStage);
+}
+
 let _todayAutoRefresh = null;
+
+// Cache for filter re-render without re-fetch
+let _todayLogsCache   = [];
+let _todayStagesCache = [];
+
+// Standalone feed renderer — accepts optional stageFilter
+function renderTodayFeed(logs, stageFilter) {
+  const feedEl = $('td-feed');
+  if (!feedEl) return;
+
+  // Update feed header label
+  const feedHeader = $('td-feed-label');
+  if (feedHeader) {
+    feedHeader.textContent = stageFilter
+      ? `Log Hari Ini — ${stageFilter}`
+      : 'Semua Aktivitas Hari Ini';
+  }
+
+  const filtered = stageFilter
+    ? logs.filter(l => l.stage === stageFilter)
+    : logs;
+
+  if (!filtered.length) {
+    feedEl.innerHTML = stageFilter
+      ? `<div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">Tidak ada log untuk tahap <strong style="color:var(--text)">${stageFilter}</strong> hari ini</div>`
+      : '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
+    return;
+  }
+
+  feedEl.innerHTML = filtered.map((l, idx) => {
+    const col    = STAGE_COLORS[l.stage] || 'var(--muted)';
+    const time   = new Date(l.created_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    const isLast = idx === filtered.length - 1;
+
+    return `
+      <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:${isLast ? 'none' : '1px solid var(--border)'}">
+        <!-- Timeline dot -->
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;margin-top:2px"></div>
+          ${!isLast ? `<div style="width:1px;flex:1;background:var(--border);margin-top:4px"></div>` : ''}
+        </div>
+        <!-- Content -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+                <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:${col}20;color:${col};border:1px solid ${col}40;white-space:nowrap">${l.stage}</span>
+                <span class="mono" style="font-size:13px;font-weight:700;color:var(--text)">${parseInt(l.qty_processed).toLocaleString('id-ID')} pcs</span>
+              </div>
+              <p style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.product_name}</p>
+              <p class="mono" style="font-size:10px;color:var(--muted);margin-top:1px">${l.order_code}</p>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p class="mono" style="font-size:12px;font-weight:600;color:var(--text)">${time}</p>
+              <p style="font-size:10px;color:var(--muted);margin-top:1px">${l.operator_name || '—'}</p>
+            </div>
+          </div>
+          ${l.note ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${l.note}</p>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
 
 async function loadTodayReport() {
   try {
     const data = await api('/dashboard/today');
-    const { summary, logs, stages } = data;
+    const { logs, stages } = data;
+
+    // Cache for click-filter re-render
+    _todayLogsCache   = logs   || [];
+    _todayStagesCache = stages || [];
+
+    // Reset stage filter on full reload
+    _todaySelectedStage = null;
 
     // ── Update timestamp
     const now = new Date();
     $('today-updated').textContent =
       'Diperbarui ' + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
 
-    // ── Today stage grid (same look as Stage Overview, but today-only pcs per stage)
-    renderTodayStageGrid(stages);
+    // ── Today stage grid
+    renderTodayStageGrid(_todayStagesCache);
 
-    // ── Activity feed
-    const feedEl = $('td-feed');
-    if (!logs.length) {
-      feedEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
-      return;
-    }
-
-    feedEl.innerHTML = logs.map((l, idx) => {
-      const col    = STAGE_COLORS[l.stage] || 'var(--muted)';
-      const time   = new Date(l.created_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
-      const isLast = idx === logs.length - 1;
-
-      return `
-        <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:${isLast ? 'none' : '1px solid var(--border)'}">
-
-          <!-- Timeline dot -->
-          <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px">
-            <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;margin-top:2px"></div>
-            ${!isLast ? `<div style="width:1px;flex:1;background:var(--border);margin-top:4px"></div>` : ''}
-          </div>
-
-          <!-- Content -->
-          <div style="flex:1;min-width:0">
-            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
-              <div style="min-width:0">
-                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
-                  <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:${col}20;color:${col};border:1px solid ${col}40;white-space:nowrap">${l.stage}</span>
-                  <span class="mono" style="font-size:13px;font-weight:700;color:var(--text)">${parseInt(l.qty_processed).toLocaleString('id-ID')} pcs</span>
-                </div>
-                <p style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.product_name}</p>
-                <p class="mono" style="font-size:10px;color:var(--muted);margin-top:1px">${l.order_code}</p>
-              </div>
-              <div style="text-align:right;flex-shrink:0">
-                <p class="mono" style="font-size:12px;font-weight:600;color:var(--text)">${time}</p>
-                <p style="font-size:10px;color:var(--muted);margin-top:1px">${l.operator_name || '—'}</p>
-              </div>
-            </div>
-            ${l.note ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${l.note}</p>` : ''}
-          </div>
-        </div>`;
-    }).join('');
+    // ── Activity feed (no filter on initial load)
+    renderTodayFeed(_todayLogsCache, null);
 
   } catch (err) {
     toast(err.message, 'error');
@@ -1514,6 +1644,207 @@ function startLivePulse() {
     const dot = $('live-dot');
     if (dot) { dot.style.opacity = on ? '1' : '0.3'; on = !on; }
   }, 1200);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SHOPEE STOCK
+// ══════════════════════════════════════════════════════════════
+
+// Minimum stock per product (stored in localStorage, editable per product)
+function getMinStock(item_id) {
+  const saved = localStorage.getItem(`shopee_min_${item_id}`);
+  if (saved) return parseInt(saved);
+  // fallback to global setting
+  return parseInt($('shopee-min-global')?.value || 10);
+}
+function setMinStock(item_id, val) {
+  localStorage.setItem(`shopee_min_${item_id}`, val);
+}
+function saveMinStock() {
+  // when global changes, reload display
+  if (_shopeeCache) renderShopeeData(_shopeeCache);
+}
+
+let _shopeeCache = null;
+
+// Shopee product URLs
+const SHOPEE_URLS = {
+  18765357002: 'https://shopee.co.id/Koncoturuu-Daster-Bigsize-Nyaman-Motif-Baru-i.242304264.18765357002',
+  26341263082: 'https://shopee.co.id/Koncoturuu-Jennie-Daster-Busui-Friendly-Rayon-Viscose-i.242304264.26341263082',
+  42609291065: 'https://shopee.co.id/Koncoturu-Sabina-Daster-Daster-Bigsize-Daster-Busui-i.242304264.42609291065',
+  24457420750: 'https://shopee.co.id/Koncoturuu-Kumala-daster-long-daster-lengan-panjang-i.242304264.24457420750',
+  55654601320: 'https://shopee.co.id/Koncoturu-Nara-Piyama-Piyama-busui-friendly-i.242304264.55654601320',
+  4033942454:  'https://shopee.co.id/Koncoturuu-Gamila-Piyama-Piyama-Rayon-Berkualitas-i.242304264.4033942454',
+};
+
+async function loadShopeeStock() {
+  // Show loading state
+  const body = $('shopee-stock-body');
+  const grid = $('shopee-products-grid');
+  if (body) body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">⏳ Mengambil data stok dari Shopee...</div>';
+  if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:24px">Memuat...</div>';
+
+  try {
+    const data = await api('/shopee/stock');
+    _shopeeCache = data;
+
+    // Update timestamp
+    const ts = new Date(data.fetched_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const updEl = $('shopee-updated');
+    if (updEl) updEl.textContent = 'Diperbarui ' + ts;
+
+    renderShopeeData(data);
+  } catch (err) {
+    const errMsg = `<div style="padding:24px;text-align:center;color:var(--danger);font-size:13px">
+      ⚠️ Gagal mengambil data Shopee: ${err.message}<br>
+      <span style="color:var(--muted);font-size:11px;margin-top:4px;display:block">Coba refresh ulang beberapa saat lagi</span>
+    </div>`;
+    if (body) body.innerHTML = errMsg;
+    if (grid) grid.innerHTML = errMsg;
+  }
+}
+
+function renderShopeeData(data) {
+  renderShopeeDashboardWidget(data.products);
+  renderShopeeProductsPage(data.products);
+}
+
+// ── Dashboard mini widget ──────────────────────────────────────
+function renderShopeeDashboardWidget(products) {
+  const body = $('shopee-stock-body');
+  if (!body) return;
+
+  const rows = products.map(p => {
+    if (p.error) {
+      return `<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center">
+        <span style="font-size:13px">${p.name}</span>
+        <span style="font-size:11px;color:var(--danger)">Error: ${p.error}</span>
+      </div>`;
+    }
+
+    const min   = getMinStock(p.item_id);
+    const stock = p.total_stock;
+    const isLow = stock !== null && stock <= min;
+    const isWarn= stock !== null && stock <= min * 2 && !isLow;
+    const col   = isLow ? 'var(--danger)' : isWarn ? 'var(--accent)' : 'var(--success)';
+    const icon  = isLow ? '🔴' : isWarn ? '🟡' : '🟢';
+
+    // Variant breakdown (top 4 by lowest stock first)
+    const sortedVars = [...(p.variants || [])].sort((a,b) => a.stock - b.stock);
+    const varHTML = sortedVars.slice(0,4).map(v => {
+      const vLow = v.stock <= Math.ceil(min / (p.variants.length || 1));
+      return `<span style="font-size:10px;padding:1px 6px;border-radius:3px;
+        background:${vLow ? 'rgba(239,68,68,.12)' : 'rgba(255,255,255,.04)'};
+        color:${vLow ? '#f87171' : 'var(--muted)'}">
+        ${v.name}: ${v.stock}
+      </span>`;
+    }).join('');
+
+    const moreVars = sortedVars.length > 4 ? `<span style="font-size:10px;color:var(--border)">+${sortedVars.length - 4} lainnya</span>` : '';
+
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;cursor:pointer"
+           onclick="navigate('shopee')"
+           onmouseover="this.style.background='rgba(255,255,255,.02)'"
+           onmouseout="this.style.background=''">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:500">${p.name}</span>
+            ${isLow ? '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(239,68,68,.15);color:#f87171;font-weight:600">STOK RENDAH</span>' : ''}
+            ${isWarn ? '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--accent);font-weight:600">PERLU PERHATIAN</span>' : ''}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${varHTML}${moreVars}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <p class="mono" style="font-size:1.3rem;font-weight:700;color:${col}">${stock !== null ? stock.toLocaleString('id-ID') : '?'}</p>
+          <p style="font-size:9px;color:var(--muted)">total stok</p>
+        </div>
+      </div>`;
+  });
+
+  body.innerHTML = rows.join('') || '<div style="padding:24px;text-align:center;color:var(--muted)">Tidak ada data produk</div>';
+}
+
+// ── Full Shopee page: per-product card with all variants ───────
+function renderShopeeProductsPage(products) {
+  const grid = $('shopee-products-grid');
+  if (!grid) return;
+
+  grid.innerHTML = products.map(p => {
+    if (p.error) {
+      return `<div class="card p-5">
+        <p class="font-medium mb-2">${p.name}</p>
+        <p style="color:var(--danger);font-size:12px">⚠️ ${p.error}</p>
+      </div>`;
+    }
+
+    const min    = getMinStock(p.item_id);
+    const stock  = p.total_stock;
+    const isLow  = stock !== null && stock <= min;
+    const isWarn = stock !== null && stock <= min * 2 && !isLow;
+    const borderCol = isLow ? 'var(--danger)' : isWarn ? 'var(--accent)' : 'var(--success)';
+    const url    = SHOPEE_URLS[p.item_id] || '#';
+
+    // All variants sorted low→high
+    const sortedVars = [...(p.variants || [])].sort((a,b) => a.stock - b.stock);
+    const varRows = sortedVars.map(v => {
+      const perMin = Math.ceil(min / (p.variants.length || 1));
+      const vLow   = v.stock <= perMin;
+      const vWarn  = v.stock <= perMin * 2 && !vLow;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+             padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:${vLow ? '#f87171' : vWarn ? 'var(--accent)' : 'var(--text)'}">${v.name}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:60px;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${Math.min(100, (v.stock / Math.max(stock,1)) * 100)}%;
+                   background:${vLow ? 'var(--danger)' : vWarn ? 'var(--accent)' : 'var(--success)'}"></div>
+            </div>
+            <span class="mono" style="font-size:12px;font-weight:600;color:${vLow ? 'var(--danger)' : vWarn ? 'var(--accent)' : 'var(--text)'}">
+              ${v.stock}
+            </span>
+            ${vLow ? '<span style="font-size:9px;color:var(--danger)">RENDAH</span>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="card overflow-hidden" style="border-top:3px solid ${borderCol}">
+        <!-- Card Header -->
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div>
+              <p class="font-semibold text-sm">${p.name}</p>
+              <a href="${url}" target="_blank"
+                 style="font-size:10px;color:var(--muted);text-decoration:none"
+                 onclick="event.stopPropagation()">
+                Lihat di Shopee ↗
+              </a>
+            </div>
+            <div style="text-align:right">
+              <p class="mono" style="font-size:1.6rem;font-weight:700;color:${borderCol};line-height:1">${stock !== null ? stock.toLocaleString('id-ID') : '?'}</p>
+              <p style="font-size:9px;color:var(--muted)">total stok</p>
+            </div>
+          </div>
+          ${isLow  ? '<div style="margin-top:8px;padding:5px 10px;border-radius:5px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);font-size:11px;color:#f87171;font-weight:600">🔴 Stok sangat rendah — perlu segera masuk antrian produksi!</div>' : ''}
+          ${isWarn ? '<div style="margin-top:8px;padding:5px 10px;border-radius:5px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);font-size:11px;color:var(--accent);font-weight:600">🟡 Stok mulai menipis — pertimbangkan produksi segera</div>' : ''}
+        </div>
+
+        <!-- Variants -->
+        <div style="padding:10px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <p style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Stok per Varian</p>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0">Min Alert:</label>
+              <input type="number" value="${min}" min="1" style="width:55px;padding:3px 6px;font-size:11px"
+                     onchange="setMinStock(${p.item_id}, this.value); if(_shopeeCache) renderShopeeData(_shopeeCache)" />
+            </div>
+          </div>
+          ${varRows}
+        </div>
+      </div>`;
+  }).join('');
 }
 
 // ── BOOT ────────────────────────────────────────────────────
