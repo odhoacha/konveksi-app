@@ -18,6 +18,8 @@
       --danger:   #ef4444;
       --text:     #e2e8f0;
       --muted:    #64748b;
+      --sidebar-w: 220px;
+      --topbar-h:  56px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -25,32 +27,85 @@
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
+      -webkit-tap-highlight-color: transparent;
     }
     .mono { font-family: 'IBM Plex Mono', monospace; }
 
-    /* Sidebar */
-    #sidebar { background: var(--surface); border-right: 1px solid var(--border); }
+    /* ── LAYOUT ── */
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── SIDEBAR (desktop) ── */
+    #sidebar {
+      width: var(--sidebar-w);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      transition: transform .25s ease;
+      z-index: 200;
+    }
+
+    /* ── MOBILE TOPBAR ── */
+    #topbar {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 300;
+    }
+    #menu-btn {
+      background: none; border: none; color: var(--text);
+      font-size: 22px; cursor: pointer; padding: 6px; line-height: 1;
+    }
+    #topbar-title { font-family: 'IBM Plex Mono', monospace; font-size: 14px; font-weight: 600; }
+
+    /* ── OVERLAY for mobile sidebar ── */
+    #sidebar-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 190;
+      backdrop-filter: blur(2px);
+    }
+    #sidebar-overlay.show { display: block; }
+
+    /* ── MAIN CONTENT ── */
+    main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    /* ── NAV ITEMS ── */
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; border-radius: 6px;
       cursor: pointer; transition: all .15s;
       font-size: 14px; color: var(--muted);
+      user-select: none;
     }
     .nav-item:hover { background: var(--border); color: var(--text); }
     .nav-item.active { background: rgba(240,165,0,.12); color: var(--accent); }
     .nav-item.active .nav-dot { background: var(--accent); }
     .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
 
-    /* Cards */
+    /* ── CARDS ── */
     .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; }
     .stat-card { border-top: 2px solid var(--accent); }
 
-    /* Badges */
+    /* ── BADGES ── */
     .badge-progress { background: rgba(59,130,246,.15); color: #60a5fa; border: 1px solid rgba(59,130,246,.3); }
     .badge-done     { background: rgba(16,185,129,.15); color: #34d399; border: 1px solid rgba(16,185,129,.3); }
     .badge-stage    { background: rgba(240,165,0,.12);  color: var(--accent); border: 1px solid rgba(240,165,0,.2); }
 
-    /* Stage Progress Bar */
+    /* ── STAGE TRACK ── */
     .stage-track { display: flex; gap: 4px; }
     .stage-pip {
       flex: 1; height: 4px; border-radius: 2px;
@@ -59,74 +114,141 @@
     .stage-pip.done    { background: var(--success); }
     .stage-pip.current { background: var(--accent); }
 
-    /* Table */
-    table { border-collapse: collapse; width: 100%; }
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { border-collapse: collapse; width: 100%; min-width: 520px; }
     th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
-         padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
-    td { padding: 12px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+         padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 11px 14px; font-size: 13px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     tr:hover td { background: rgba(255,255,255,.02); }
     tr:last-child td { border-bottom: none; }
 
-    /* Inputs */
+    /* ── INPUTS ── */
     input, select, textarea {
       width: 100%; background: var(--bg); border: 1px solid var(--border);
       color: var(--text); border-radius: 6px; padding: 9px 12px; font-size: 14px;
       font-family: 'IBM Plex Sans', sans-serif; outline: none; transition: border .15s;
+      -webkit-appearance: none; appearance: none;
     }
     input:focus, select:focus, textarea:focus { border-color: var(--accent); }
     label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 5px; letter-spacing: .04em; text-transform: uppercase; }
     select option { background: var(--surface); }
 
-    /* Buttons */
+    /* ── BUTTONS ── */
     .btn-primary {
       background: var(--accent); color: #000; font-weight: 600;
-      padding: 9px 18px; border-radius: 6px; border: none;
+      padding: 10px 18px; border-radius: 6px; border: none;
       cursor: pointer; font-size: 14px; transition: opacity .15s;
+      touch-action: manipulation;
     }
     .btn-primary:hover { opacity: .85; }
     .btn-ghost {
       background: transparent; color: var(--muted); border: 1px solid var(--border);
       padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all .15s;
+      touch-action: manipulation;
     }
     .btn-ghost:hover { border-color: var(--text); color: var(--text); }
     .btn-danger {
       background: rgba(239,68,68,.1); color: #f87171; border: 1px solid rgba(239,68,68,.3);
       padding: 6px 12px; border-radius: 5px; cursor: pointer; font-size: 12px;
+      touch-action: manipulation;
     }
 
-    /* Toast */
+    /* ── TOAST ── */
     #toast {
-      position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+      position: fixed; bottom: 20px; right: 16px; left: 16px; z-index: 9999;
       padding: 12px 18px; border-radius: 8px; font-size: 13px;
-      transform: translateY(80px); opacity: 0; transition: all .3s; pointer-events: none;
-      max-width: 320px;
+      transform: translateY(100px); opacity: 0; transition: all .3s; pointer-events: none;
+      max-width: 360px; margin: 0 auto;
     }
     #toast.show { transform: translateY(0); opacity: 1; }
-    #toast.success { background: rgba(16,185,129,.9); color: #fff; }
-    #toast.error   { background: rgba(239,68,68,.9);   color: #fff; }
+    #toast.success { background: rgba(16,185,129,.95); color: #fff; }
+    #toast.error   { background: rgba(239,68,68,.95);   color: #fff; }
 
-    /* Modal */
+    /* ── MODAL ── */
     .modal-overlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      display: flex; align-items: center; justify-content: center; z-index: 1000;
+      position: fixed; inset: 0; background: rgba(0,0,0,.75);
+      display: flex; align-items: flex-end; justify-content: center; z-index: 1000;
       backdrop-filter: blur(2px);
     }
-    .modal-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 28px; width: 480px; max-width: 94vw; }
+    .modal-box {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px 16px 0 0;
+      padding: 24px 20px 32px;
+      width: 100%; max-width: 100%;
+      max-height: 92vh; overflow-y: auto;
+    }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* Login page */
+    /* ── LOGIN PAGE ── */
     #login-page { background: radial-gradient(ellipse at 30% 50%, rgba(240,165,0,.06) 0%, transparent 60%), var(--bg); }
 
-    /* Animations */
+    /* ── ANIMATIONS ── */
     .fade-in { animation: fadeIn .2s ease; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 
-    /* Hidden */
+    /* ── HIDDEN ── */
     .hidden { display: none !important; }
+
+    /* ── PRODUCTION GRID (form + logs side by side on tablet+) ── */
+    .prod-grid { display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── FILTER BARS: stack on mobile ── */
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+    .filter-bar > * { min-width: 0; }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE BREAKPOINTS
+    ═══════════════════════════════════════════════ */
+
+    /* ── TABLET+ (≥ 640px): show sidebar, hide topbar ── */
+    @media (min-width: 640px) {
+      #topbar { display: none !important; }
+      #sidebar { display: flex !important; transform: none !important; position: relative; }
+      #sidebar-overlay { display: none !important; }
+      main { padding: 24px; }
+      .modal-overlay { align-items: center; }
+      .modal-box { border-radius: 12px; padding: 28px; width: 520px; max-width: 94vw; max-height: 88vh; }
+      .prod-grid { flex-direction: row; }
+      .prod-grid > *:first-child { width: 340px; flex-shrink: 0; }
+      .prod-grid > *:last-child  { flex: 1; min-width: 0; }
+    }
+
+    /* ── MOBILE (< 640px): bottom-sheet sidebar, topbar ── */
+    @media (max-width: 639px) {
+      #topbar { display: flex; }
+      #app { padding-top: var(--topbar-h); }
+      #sidebar {
+        position: fixed;
+        top: 0; left: 0; bottom: 0;
+        width: 260px;
+        transform: translateX(-100%);
+      }
+      #sidebar.open { transform: translateX(0); }
+      main { padding: 14px 12px 80px; }
+      .stat-num { font-size: 2rem !important; }
+      /* Stage grids: 4 cols on mobile */
+      #stage-overview-grid, #td-stage-grid { grid-template-columns: repeat(4, 1fr) !important; }
+      /* Tables: horizontal scroll */
+      .card.overflow-hidden { overflow: visible; }
+      .table-wrap { overflow-x: auto; border-radius: 10px; }
+      /* Filter bars: full width each */
+      .filter-bar > div { width: 100%; }
+      .filter-bar input,
+      .filter-bar select { width: 100% !important; }
+      /* Buttons in filter: full width */
+      .filter-bar .btn-ghost { width: 100%; text-align: center; }
+      /* Hide some less-important table cols on very small */
+      .col-hide-xs { display: none; }
+    }
+
+    @media (max-width: 380px) {
+      #stage-overview-grid { grid-template-columns: repeat(4, 1fr) !important; font-size: 9px; }
+    }
   </style>
 </head>
 <body>
@@ -172,10 +294,19 @@
 <!-- ═══════════════════════════════════════════════════════════
      MAIN APP
 ════════════════════════════════════════════════════════════ -->
-<div id="app" class="hidden flex h-screen overflow-hidden">
+<!-- Mobile topbar -->
+<div id="topbar">
+  <button id="menu-btn" onclick="toggleSidebar()">☰</button>
+  <span id="topbar-title" class="mono" style="font-size:14px;font-weight:600">KONVEKSI<span style="color:var(--accent)">.</span>TRACK</span>
+  <span id="topbar-page" style="font-size:12px;color:var(--muted)"></span>
+</div>
+<!-- Sidebar overlay (mobile tap-to-close) -->
+<div id="sidebar-overlay" onclick="closeSidebar()"></div>
+
+<div id="app" class="hidden">
 
   <!-- SIDEBAR -->
-  <aside id="sidebar" class="w-56 flex-shrink-0 flex flex-col p-4 overflow-y-auto">
+  <aside id="sidebar">
     <!-- Logo -->
     <div class="flex items-center gap-2 px-2 mb-8 mt-1">
       <div style="background:var(--accent);width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;">🏭</div>
@@ -184,19 +315,22 @@
 
     <!-- Nav -->
     <nav class="flex flex-col gap-1 flex-1">
-      <div class="nav-item active" onclick="navigate('dashboard')">
+      <div class="nav-item active" onclick="navigate('dashboard');closeSidebar()">
         <span class="nav-dot"></span> Dashboard
       </div>
-      <div class="nav-item" onclick="navigate('orders')">
+      <div class="nav-item" onclick="navigate('orders');closeSidebar()">
         <span class="nav-dot"></span> Order
       </div>
-      <div class="nav-item" onclick="navigate('production')">
+      <div class="nav-item" onclick="navigate('production');closeSidebar()">
         <span class="nav-dot"></span> Input Produksi
       </div>
-      <div class="nav-item" onclick="navigate('report')">
+      <div class="nav-item" onclick="navigate('report');closeSidebar()">
         <span class="nav-dot"></span> Report
       </div>
-      <div class="nav-item" id="nav-users" onclick="navigate('users')">
+      <div class="nav-item" id="nav-shopee" onclick="navigate('shopee');closeSidebar()">
+        <span class="nav-dot"></span> Stok Shopee
+      </div>
+      <div class="nav-item" id="nav-users" onclick="navigate('users');closeSidebar()">
         <span class="nav-dot"></span> Manajemen User
       </div>
     </nav>
@@ -214,10 +348,10 @@
   </aside>
 
   <!-- MAIN CONTENT -->
-  <main class="flex-1 overflow-y-auto p-6">
+  <main class="flex-1 overflow-y-auto">
 
     <!-- ── DASHBOARD ── -->
-    <section id="page-dashboard" class="fade-in">
+    <section id="page-dashboard" class="fade-in" style="padding-bottom:16px">
       <div class="flex items-center justify-between mb-6">
         <div>
           <h1 class="text-xl font-semibold">Dashboard</h1>
@@ -226,39 +360,76 @@
         <button class="btn-ghost" onclick="loadDashboard()">↺ Refresh</button>
       </div>
 
-      <!-- Stats -->
-      <div class="grid grid-cols-2 gap-4 mb-6" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">
-        <div class="card stat-card p-5">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Produksi Hari Ini</p>
-          <p id="stat-today" class="mono text-3xl font-semibold" style="color:var(--accent)">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+      <!-- Today Activity Report -->
+      <div class="card mb-6" id="today-report-card">
+
+        <!-- Header -->
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <h2 class="font-semibold text-sm" style="display:flex;align-items:center;gap:8px">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 0 3px rgba(16,185,129,.2)" id="live-dot"></span>
+              Aktivitas Hari Ini
+            </h2>
+            <p style="font-size:11px;color:var(--muted);margin-top:2px" id="today-updated">—</p>
+          </div>
+          <button class="btn-ghost" onclick="loadTodayReport()" style="font-size:12px;padding:5px 12px">↺ Refresh</button>
         </div>
-        <div class="card p-5" style="border-top:2px solid var(--accent2)">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Minggu Ini</p>
-          <p id="stat-week" class="mono text-3xl font-semibold" style="color:#60a5fa">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+
+        <!-- Today Stage Grid — same style as Stage Overview but today-only pcs -->
+        <div id="td-stage-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:0;border-bottom:1px solid var(--border)">
+          <!-- filled by renderTodayStageGrid() -->
         </div>
-        <div class="card p-5" style="border-top:2px solid var(--success)">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Bulan Ini</p>
-          <p id="stat-month" class="mono text-3xl font-semibold" style="color:var(--success)">—</p>
-          <p class="text-xs mt-1" style="color:var(--muted)">pcs diproses</p>
+
+        <!-- Activity feed: today's logs -->
+        <div style="padding:10px 16px 8px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border)">
+          <p id="td-feed-label" style="font-size:12px;font-weight:500;color:var(--muted)">Semua Aktivitas Hari Ini</p>
+          <p style="font-size:10px;color:var(--border)">↑ klik tahap untuk filter</p>
         </div>
-        <div class="card p-5" style="border-top:2px solid #8b5cf6">
-          <p class="text-xs mb-2" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Order Aktif / Selesai</p>
-          <p class="mono text-3xl font-semibold" style="color:#a78bfa">
-            <span id="stat-active">—</span><span style="color:var(--muted);font-size:18px"> / </span><span id="stat-done">—</span>
-          </p>
-          <p class="text-xs mt-1" style="color:var(--muted)">total order</p>
+        <div id="td-feed" style="max-height:320px;overflow-y:auto">
+          <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Memuat aktivitas...</div>
         </div>
       </div>
 
-      <!-- TAMBAHAN GUA -->
-      <div class="grid grid-cols-2 gap-4 mb-6" id="stage-stats"></div> 
+      <!-- Shopee Stock Alert Widget -->
+      <div class="card mb-6" id="shopee-stock-card">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/0/0e/Shopee_logo.svg/120px-Shopee_logo.svg.png" 
+                 style="height:18px;opacity:.9" alt="Shopee"/>
+            <div>
+              <h2 class="font-semibold text-sm">Stok Toko Shopee</h2>
+              <p style="font-size:11px;color:var(--muted);margin-top:1px" id="shopee-updated">—</p>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--danger)"></span> Stok rendah (&lt; min)
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--accent);margin-left:8px"></span> Perlu perhatian
+            </div>
+            <button class="btn-ghost" onclick="loadShopeeStock()" style="font-size:12px;padding:5px 12px">↺ Refresh</button>
+          </div>
+        </div>
+        <div id="shopee-stock-body">
+          <div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">Memuat stok Shopee...</div>
+        </div>
+      </div>
 
-      <!-- Active Orders -->
+      <!-- Stage Overview Grid -->
+      <div class="card mb-6">
+        <div class="p-4 flex items-center justify-between" style="border-bottom:1px solid var(--border)">
+          <h2 class="font-medium text-sm">Stage Overview</h2>
+          <span class="text-xs" style="color:var(--muted)">Jumlah order aktif per tahap</span>
+        </div>
+        <div id="stage-overview-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:0">
+        </div>
+      </div>
+
+      <!-- Active Orders with Search -->
       <div class="card">
-        <div class="p-4" style="border-bottom:1px solid var(--border)">
+        <div class="p-4 flex items-center justify-between flex-wrap gap-3" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm">Order Sedang Berjalan</h2>
+          <input id="dash-search" type="text" placeholder="🔍  Cari order atau produk..." oninput="filterActiveOrders()"
+            style="width:240px;padding:6px 10px;font-size:12px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none"/>
         </div>
         <div id="active-orders-list" class="divide-y" style="border-color:var(--border)"></div>
       </div>
@@ -266,11 +437,39 @@
 
     <!-- ── ORDERS ── -->
     <section id="page-orders" class="hidden fade-in">
-      <div class="flex items-center justify-between mb-6">
+      <div class="flex items-center justify-between mb-4">
         <h1 class="text-xl font-semibold">Manajemen Order</h1>
         <button class="btn-primary" id="btn-add-order" onclick="openOrderModal()">+ Tambah Order</button>
       </div>
-      <div class="card overflow-hidden">
+
+      <!-- Filters -->
+      <div class="card p-4 mb-4 filter-bar">
+        <div style="flex:1;min-width:180px">
+          <label>Cari Order / Produk</label>
+          <input type="text" id="ord-search" placeholder="Ketik kode atau nama produk..." oninput="applyOrderFilters()"/>
+        </div>
+        <div>
+          <label>Status</label>
+          <select id="ord-status" onchange="applyOrderFilters()" style="width:160px">
+            <option value="">Semua Status</option>
+            <option value="on_progress">On Progress</option>
+            <option value="selesai">Selesai</option>
+          </select>
+        </div>
+        <div>
+          <label>Tahap Saat Ini</label>
+          <select id="ord-stage" onchange="applyOrderFilters()" style="width:160px">
+            <option value="">Semua Tahap</option>
+            <option>Belum mulai</option>
+            <option>Cutting</option><option>Sewing</option><option>Buttoning</option>
+            <option>Finishing</option><option>QC</option><option>Packing</option><option>Warehouse</option>
+          </select>
+        </div>
+        <button class="btn-ghost" onclick="clearOrderFilters()">✕ Reset</button>
+      </div>
+
+      <div class="card">
+        <div class="table-wrap">
         <table>
           <thead>
             <tr>
@@ -285,6 +484,7 @@
           </thead>
           <tbody id="orders-tbody"></tbody>
         </table>
+        </div>
       </div>
     </section>
 
@@ -294,7 +494,7 @@
         <h1 class="text-xl font-semibold">Input Produksi</h1>
       </div>
 
-      <div class="grid gap-6" style="grid-template-columns:1fr 1.4fr">
+      <div class="prod-grid">
         <!-- Form -->
         <div class="card p-5">
           <h2 class="font-medium text-sm mb-4" style="color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Form Input</h2>
@@ -337,8 +537,31 @@
 
         <!-- Recent logs -->
         <div class="card overflow-hidden">
-          <div class="p-4" style="border-bottom:1px solid var(--border)">
-            <h2 class="font-medium text-sm">Log Terbaru</h2>
+          <div class="p-4 flex flex-wrap items-end gap-3" style="border-bottom:1px solid var(--border)">
+            <h2 class="font-medium text-sm" style="margin-right:auto">Log Produksi</h2>
+            <div>
+              <label>Dari Tanggal</label>
+              <input type="date" id="log-date-from" oninput="applyLogFilters()" style="width:145px;font-size:12px"/>
+            </div>
+            <div>
+              <label>Sampai</label>
+              <input type="date" id="log-date-to" oninput="applyLogFilters()" style="width:145px;font-size:12px"/>
+            </div>
+            <div>
+              <label>Tahap</label>
+              <select id="log-stage-filter" onchange="applyLogFilters()" style="width:140px;font-size:12px">
+                <option value="">Semua</option>
+                <option>Cutting</option><option>Sewing</option><option>Buttoning</option>
+                <option>Finishing</option><option>QC</option><option>Packing</option><option>Warehouse</option>
+              </select>
+            </div>
+            <div>
+              <label>Order</label>
+              <select id="log-order-filter" onchange="applyLogFilters()" style="width:160px;font-size:12px">
+                <option value="">Semua Order</option>
+              </select>
+            </div>
+            <button class="btn-ghost" style="font-size:11px;padding:6px 12px" onclick="clearLogFilters()">✕ Reset</button>
           </div>
           <div style="overflow-y:auto;max-height:500px">
             <table>
@@ -370,12 +593,12 @@
         <div class="p-4" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm" id="report-title">—</h2>
         </div>
-        <table>
+        <div class="table-wrap"><table>
           <thead>
             <tr><th>Label</th><th>Total Qty Diproses</th><th>Log Count</th></tr>
           </thead>
           <tbody id="report-tbody"></tbody>
-        </table>
+        </table></div>
       </div>
 
       <!-- Per order -->
@@ -383,12 +606,12 @@
         <div class="p-4" style="border-bottom:1px solid var(--border)">
           <h2 class="font-medium text-sm">Summary Per Order</h2>
         </div>
-        <table>
+        <div class="table-wrap"><table>
           <thead>
             <tr><th>Kode Order</th><th>Produk</th><th>Tahap Selesai</th><th>Total Diproses</th></tr>
           </thead>
           <tbody id="report-order-tbody"></tbody>
-        </table>
+        </table></div>
       </div>
     </section>
 
@@ -405,6 +628,30 @@
           </thead>
           <tbody id="users-tbody"></tbody>
         </table>
+      </div>
+    </section>
+
+
+    <!-- ── SHOPEE STOCK ── -->
+    <section id="page-shopee" class="hidden fade-in">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h1 class="text-xl font-semibold">Stok Toko Shopee</h1>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px">koncoturuu — data real-time dari Shopee</p>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <div>
+            <label style="font-size:11px">Stok Minimum Alert</label>
+            <input type="number" id="shopee-min-global" value="10" min="1" style="width:80px"
+              onchange="saveMinStock()" />
+          </div>
+          <button class="btn-primary" onclick="loadShopeeStock()">↺ Refresh Stok</button>
+        </div>
+      </div>
+
+      <!-- Per-product cards -->
+      <div id="shopee-products-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px">
+        <div style="color:var(--muted);font-size:13px;padding:24px">Memuat...</div>
       </div>
     </section>
 
@@ -538,39 +785,7 @@ function stageBadge(stage) {
 }
 
 function closeModal(id) { $(id).classList.add('hidden'); }
-// -- TAMBAHAN GUA
-
-async function loadStageStats() {
-  try {
-    const start   = $('filter-start').value;
-    const end     = $('filter-end').value;
-    const code    = $('filter-code').value;
-    const product = $('filter-product').value;
-
-    const query = new URLSearchParams({
-      start, end, code, product
-    }).toString();
-
-    const data = await api(`/dashboard/stages?${query}`);
-
-    const container = $('stage-stats');
-
-    if (!data.length) {
-      container.innerHTML = `<div style="color:var(--muted)">Tidak ada data</div>`;
-      return;
-    }
-
-    container.innerHTML = data.map(s => `
-      <div class="card p-4">
-        <p class="text-xs" style="color:var(--muted)">${s.stage}</p>
-        <p class="mono text-xl font-semibold">${parseInt(s.total).toLocaleString('id-ID')} pcs</p>
-      </div>
-    `).join('');
-
-  } catch (err) {
-    toast(err.message, 'error');
-  }
-}
+// (loadStageStats replaced by renderStageOverview)
 
 // ── AUTH ────────────────────────────────────────────────────
 async function login() {
@@ -602,7 +817,9 @@ $('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') lo
 function logout() {
   localStorage.removeItem('token');
   currentUser = null;
+  $('app').style.display = 'none';
   $('app').classList.add('hidden');
+  closeSidebar();
   $('login-page').classList.remove('hidden');
   $('login-email').value = '';
   $('login-password').value = '';
@@ -621,7 +838,9 @@ async function checkAuth() {
 // ── APP INIT ────────────────────────────────────────────────
 function showApp() {
   $('login-page').classList.add('hidden');
-  $('app').classList.remove('hidden');
+  const appEl = $('app');
+  appEl.style.display = 'flex';
+  appEl.classList.remove('hidden');
   $('sidebar-name').textContent = currentUser.name;
   $('sidebar-role').textContent = currentUser.role.toUpperCase();
 
@@ -644,6 +863,14 @@ function navigate(page) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
 
   $(`page-${page}`).classList.remove('hidden');
+
+  // Update mobile topbar page label
+  const pageLabels = {
+    dashboard:'Dashboard', orders:'Order', production:'Input Produksi',
+    report:'Report', users:'Users', seamstresses:'Penjahit'
+  };
+  const tpp = $('topbar-page');
+  if (tpp) tpp.textContent = pageLabels[page] || '';
   document.querySelectorAll('.nav-item').forEach(n => {
     if (n.textContent.trim().toLowerCase().includes(page === 'dashboard' ? 'dash' : page === 'orders' ? 'order' : page === 'production' ? 'produk' : page === 'report' ? 'report' : 'user'))
       n.classList.add('active');
@@ -659,45 +886,23 @@ function navigate(page) {
 // ── DASHBOARD ───────────────────────────────────────────────
 async function loadDashboard() {
   try {
-    const data = await api('/dashboard');
-    const { stats, activeOrders } = data;
+    // Fire both independently — loadTodayReport manages its own DOM
+    loadTodayReport(); // non-blocking, no await needed
+    loadShopeeStock(); // non-blocking, no await needed
 
-    $('stat-today').textContent  = stats.totalToday.toLocaleString('id-ID');
-    $('stat-week').textContent   = stats.totalWeek.toLocaleString('id-ID');
-    $('stat-month').textContent  = stats.totalMonth.toLocaleString('id-ID');
-    $('stat-active').textContent = stats.ordersOnProgress;
-    $('stat-done').textContent   = stats.ordersSelesai;
+    const dashData = await api('/dashboard');
+    const activeOrders     = dashData.activeOrders     || [];
+    const stageDistribution = dashData.stageDistribution || [];
 
-    const list = $('active-orders-list');
-    if (!activeOrders.length) {
-      list.innerHTML = `<div class="p-8 text-center" style="color:var(--muted)">Tidak ada order aktif</div>`;
-      return;
-    }
+    // Stage overview grid
+    renderStageOverview(stageDistribution);
 
-    list.innerHTML = activeOrders.map(o => {
-      const stageIdx = STAGES.indexOf(o.current_stage);
-      const pips = STAGES.map((s, i) => {
-        const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
-        return `<div class="stage-pip ${cls}" title="${s}"></div>`;
-      }).join('');
+    // Active orders list
+    _allActiveOrders = activeOrders;
+    const searchEl = $('dash-search');
+    if (searchEl) searchEl.value = '';
+    renderActiveOrders(_allActiveOrders);
 
-      return `
-        <div class="p-4 cursor-pointer" onclick="openOrderDetail(${o.id})" style="transition:background .15s" onmouseover="this.style.background='rgba(255,255,255,.02)'" onmouseout="this.style.background=''">
-          <div class="flex items-start justify-between mb-2">
-            <div>
-              <span class="mono text-xs" style="color:var(--muted)">${o.order_code}</span>
-              <p class="font-medium text-sm mt-0.5">${o.product_name}</p>
-            </div>
-            <div class="text-right">
-              ${stageBadge(o.current_stage || 'Belum mulai')}
-              <p class="text-xs mt-1" style="color:var(--muted)">${(o.current_qty||0).toLocaleString('id-ID')} / ${o.target_qty.toLocaleString('id-ID')} pcs</p>
-            </div>
-          </div>
-          <div class="stage-track mt-2">${pips}</div>
-        </div>
-      `;
-    }).join('');
-    loadStageStats();
   } catch (err) {
     toast(err.message, 'error');
   }
@@ -707,28 +912,12 @@ async function loadDashboard() {
 async function loadOrders() {
   try {
     const orders = await api('/orders');
-    const tbody  = $('orders-tbody');
-    tbody.innerHTML = orders.map(o => `
-      <tr>
-        <td class="mono text-xs">${o.order_code}</td>
-        <td class="font-medium">${o.product_name}</td>
-        <td class="mono">${o.target_qty.toLocaleString('id-ID')}</td>
-        <td>${stageBadge(o.current_stage || 'Belum mulai')}</td>
-        <td>
-          <span style="font-size:11px;padding:2px 8px;border-radius:4px" class="${o.status==='selesai'?'badge-done':'badge-progress'}">
-            ${o.status === 'selesai' ? 'Selesai' : 'On Progress'}
-          </span>
-        </td>
-        <td class="text-xs" style="color:var(--muted)">${fmtDate(o.created_at)}</td>
-        <td>
-          <div class="flex gap-2">
-            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderDetail(${o.id})">Detail</button>
-            ${currentUser.role !== 'operator' ? `<button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderModal(${o.id},'${o.product_name}',${o.target_qty})">Edit</button>` : ''}
-            ${currentUser.role === 'superadmin' ? `<button class="btn-danger" onclick="deleteOrder(${o.id})">Hapus</button>` : ''}
-          </div>
-        </td>
-      </tr>
-    `).join('');
+    _allOrders = orders;
+    // reset filters on fresh load
+    if ($('ord-search'))  $('ord-search').value  = '';
+    if ($('ord-status'))  $('ord-status').value  = '';
+    if ($('ord-stage'))   $('ord-stage').value   = '';
+    renderOrdersTable(_allOrders);
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -833,16 +1022,21 @@ async function loadProductionPage() {
     });
     if (current) sel.value = current;
 
-    // Logs table
-    $('prod-logs-tbody').innerHTML = logs.slice(0, 30).map(l => `
-      <tr>
-        <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
-        <td class="text-xs">${l.order_code}</td>
-        <td>${stageBadge(l.stage)}</td>
-        <td class="mono">${l.qty_processed}</td>
-        <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Belum ada log</td></tr>';
+    // Populate log order filter dropdown (all orders)
+    const logOrderSel = $('log-order-filter');
+    if (logOrderSel) {
+      const prevVal = logOrderSel.value;
+      logOrderSel.innerHTML = '<option value="">Semua Order</option>';
+      orders.forEach(o => {
+        logOrderSel.innerHTML += `<option value="${o.id}">${o.order_code}</option>`;
+      });
+      logOrderSel.value = prevVal;
+    }
+
+    // Store all logs, render with current filters
+    _allLogs = logs;
+    applyLogFilters();
+
   } catch (err) { toast(err.message, 'error'); }
 }
 
@@ -1051,8 +1245,622 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.add('hidden'); });
 });
 
+
+// ── DASHBOARD: STAGE OVERVIEW ────────────────────────────────
+function renderStageOverview(stageDistribution) {
+  const grid = $('stage-overview-grid');
+  if (!grid) return;
+
+  // Build a map: stage → count
+  const stageMap = {};
+  (stageDistribution || []).forEach(r => { stageMap[r.stage] = r.count; });
+
+  const stageColors = {
+    'Cutting':    '#f0a500',
+    'Sewing':     '#3b82f6',
+    'Buttoning':  '#8b5cf6',
+    'Finishing':  '#06b6d4',
+    'QC':         '#f59e0b',
+    'Packing':    '#10b981',
+    'Warehouse':  '#6b7280',
+  };
+
+  grid.innerHTML = STAGES.map((s, i) => {
+    const count = stageMap[s] || 0;
+    const col   = stageColors[s] || 'var(--accent)';
+    const borderR = i < STAGES.length - 1 ? 'border-right:1px solid var(--border);' : '';
+    return `
+      <div style="padding:16px 10px;text-align:center;${borderR}cursor:pointer;transition:background .15s"
+           onclick="filterOrdersByStage('${s}')"
+           onmouseover="this.style.background='rgba(255,255,255,.03)'"
+           onmouseout="this.style.background=''">
+        <p class="mono" style="font-size:26px;font-weight:700;color:${col};line-height:1">${count}</p>
+        <p style="font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.04em">${s.toUpperCase()}</p>
+        ${count > 0 ? `<div style="width:24px;height:3px;background:${col};border-radius:2px;margin:6px auto 0"></div>` : `<div style="width:24px;height:3px;background:var(--border);border-radius:2px;margin:6px auto 0"></div>`}
+      </div>`;
+  }).join('');
+}
+
+// Called from loadDashboard — store activeOrders globally for client-side filter
+let _allActiveOrders = [];
+
+function renderActiveOrders(orders) {
+  const list = $('active-orders-list');
+  if (!orders.length) {
+    list.innerHTML = `<div class="p-8 text-center" style="color:var(--muted)">Tidak ada order aktif</div>`;
+    return;
+  }
+  list.innerHTML = orders.map(o => {
+    const stageIdx = STAGES.indexOf(o.current_stage);
+    const pips = STAGES.map((s, i) => {
+      const cls = i < stageIdx ? 'done' : i === stageIdx ? 'current' : '';
+      return `<div class="stage-pip ${cls}" title="${s}"></div>`;
+    }).join('');
+    return `
+      <div class="p-4 cursor-pointer" onclick="openOrderDetail(${o.id})"
+           style="transition:background .15s"
+           onmouseover="this.style.background='rgba(255,255,255,.02)'"
+           onmouseout="this.style.background=''">
+        <div class="flex items-start justify-between mb-2">
+          <div>
+            <span class="mono text-xs" style="color:var(--muted)">${o.order_code}</span>
+            <p class="font-medium text-sm mt-0.5">${o.product_name}</p>
+          </div>
+          <div class="text-right">
+            ${stageBadge(o.current_stage || 'Belum mulai')}
+            <p class="text-xs mt-1" style="color:var(--muted)">${(o.current_qty||0).toLocaleString('id-ID')} / ${o.target_qty.toLocaleString('id-ID')} pcs</p>
+          </div>
+        </div>
+        <div class="stage-track mt-2">${pips}</div>
+      </div>`;
+  }).join('');
+}
+
+function filterActiveOrders() {
+  const q = ($('dash-search')?.value || '').toLowerCase();
+  const filtered = q
+    ? _allActiveOrders.filter(o =>
+        o.order_code.toLowerCase().includes(q) ||
+        o.product_name.toLowerCase().includes(q))
+    : _allActiveOrders;
+  renderActiveOrders(filtered);
+}
+
+function filterOrdersByStage(stage) {
+  // Navigate to Orders page and set stage filter
+  navigate('orders');
+  setTimeout(() => {
+    const sel = $('ord-stage');
+    if (sel) { sel.value = stage; applyOrderFilters(); }
+  }, 100);
+}
+
+// ── ORDERS: CLIENT-SIDE FILTER ────────────────────────────────
+let _allOrders = [];
+
+function applyOrderFilters() {
+  const q      = ($('ord-search')?.value || '').toLowerCase();
+  const status = $('ord-status')?.value || '';
+  const stage  = $('ord-stage')?.value  || '';
+
+  let filtered = _allOrders;
+  if (q)      filtered = filtered.filter(o => o.order_code.toLowerCase().includes(q) || o.product_name.toLowerCase().includes(q));
+  if (status) filtered = filtered.filter(o => o.status === status);
+  if (stage)  filtered = filtered.filter(o => (o.current_stage || 'Belum mulai') === stage);
+
+  renderOrdersTable(filtered);
+}
+
+function clearOrderFilters() {
+  if ($('ord-search'))  $('ord-search').value  = '';
+  if ($('ord-status'))  $('ord-status').value  = '';
+  if ($('ord-stage'))   $('ord-stage').value   = '';
+  renderOrdersTable(_allOrders);
+}
+
+function renderOrdersTable(orders) {
+  const tbody = $('orders-tbody');
+  tbody.innerHTML = orders.length
+    ? orders.map(o => `
+      <tr>
+        <td class="mono text-xs">${o.order_code}</td>
+        <td class="font-medium">${o.product_name}</td>
+        <td class="mono">${o.target_qty.toLocaleString('id-ID')}</td>
+        <td>${stageBadge(o.current_stage || 'Belum mulai')}</td>
+        <td>
+          <span style="font-size:11px;padding:2px 8px;border-radius:4px" class="${o.status==='selesai'?'badge-done':'badge-progress'}">
+            ${o.status === 'selesai' ? 'Selesai' : 'On Progress'}
+          </span>
+        </td>
+        <td class="text-xs" style="color:var(--muted)">${fmtDate(o.created_at)}</td>
+        <td>
+          <div class="flex gap-2">
+            <button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderDetail(${o.id})">Detail</button>
+            ${currentUser.role !== 'operator' ? `<button class="btn-ghost" style="font-size:11px;padding:5px 10px" onclick="openOrderModal(${o.id},'${o.product_name}',${o.target_qty},${o.price_per_piece||0})">Edit</button>` : ''}
+            ${currentUser.role === 'superadmin' ? `<button class="btn-danger" onclick="deleteOrder(${o.id})">Hapus</button>` : ''}
+          </div>
+        </td>
+      </tr>`).join('')
+    : `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Tidak ada order yang cocok dengan filter</td></tr>`;
+}
+
+// ── PRODUCTION LOG: CLIENT-SIDE FILTER ───────────────────────
+let _allLogs = [];
+
+function applyLogFilters() {
+  const dateFrom = $('log-date-from')?.value || '';
+  const dateTo   = $('log-date-to')?.value   || '';
+  const stage    = $('log-stage-filter')?.value || '';
+  const orderId  = $('log-order-filter')?.value || '';
+
+  let filtered = _allLogs;
+  if (stage)    filtered = filtered.filter(l => l.stage === stage);
+  if (orderId)  filtered = filtered.filter(l => String(l.order_id) === orderId);
+  if (dateFrom) filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) >= dateFrom);
+  if (dateTo)   filtered = filtered.filter(l => l.created_at && l.created_at.slice(0,10) <= dateTo);
+
+  renderLogTable(filtered);
+}
+
+function clearLogFilters() {
+  if ($('log-date-from'))    $('log-date-from').value    = '';
+  if ($('log-date-to'))      $('log-date-to').value      = '';
+  if ($('log-stage-filter')) $('log-stage-filter').value = '';
+  if ($('log-order-filter')) $('log-order-filter').value = '';
+  renderLogTable(_allLogs);
+}
+
+function renderLogTable(logs) {
+  $('prod-logs-tbody').innerHTML = logs.length
+    ? logs.map(l => `
+      <tr>
+        <td class="mono text-xs" style="color:var(--muted)">${fmtDateTime(l.created_at)}</td>
+        <td class="text-xs">${l.order_code}</td>
+        <td>${stageBadge(l.stage)}</td>
+        <td class="mono">${l.qty_processed}</td>
+        <td class="text-xs" style="color:var(--muted)">${l.operator_name||'—'}</td>
+      </tr>`)
+      .join('')
+    : '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px">Tidak ada log yang cocok</td></tr>';
+}
+
+
+// ── MOBILE SIDEBAR ───────────────────────────────────────────
+function toggleSidebar() {
+  const sb  = $('sidebar');
+  const ov  = $('sidebar-overlay');
+  const open = sb.classList.contains('open');
+  if (open) { closeSidebar(); } else { openSidebar(); }
+}
+function openSidebar() {
+  $('sidebar').classList.add('open');
+  $('sidebar-overlay').classList.add('show');
+  document.body.style.overflow = 'hidden';
+}
+function closeSidebar() {
+  $('sidebar').classList.remove('open');
+  $('sidebar-overlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+
+// ── TODAY ACTIVITY REPORT ────────────────────────────────────
+const STAGE_COLORS = {
+  Cutting:'#f0a500', Sewing:'#3b82f6', Buttoning:'#8b5cf6',
+  Finishing:'#06b6d4', QC:'#f59e0b', Packing:'#10b981', Warehouse:'#6b7280'
+};
+
+// Render today-only stage grid (7 cols, same visual as Stage Overview)
+// Track which stage is currently selected (null = show all)
+let _todaySelectedStage = null;
+
+function renderTodayStageGrid(stages) {
+  const grid = $('td-stage-grid');
+  if (!grid) return;
+
+  // Build lookup: stage → { total_pcs, log_count }
+  const map = {};
+  (stages || []).forEach(s => { map[s.stage] = s; });
+
+  const hasAny = stages && stages.length > 0;
+
+  grid.innerHTML = STAGES.map((stage, i) => {
+    const col      = STAGE_COLORS[stage] || '#6b7280';
+    const data     = map[stage];
+    const pcs      = data ? parseInt(data.total_pcs) : 0;
+    const logs     = data ? parseInt(data.log_count) : 0;
+    const active   = !!data;
+    const selected = _todaySelectedStage === stage;
+    const borderR  = i < STAGES.length - 1 ? 'border-right:1px solid var(--border);' : '';
+
+    // Selected: filled bg with stage color tint; active: clickable; inactive: dimmed
+    const bgStyle  = selected
+      ? `background:${col}18;`
+      : '';
+    const cursor   = active ? 'cursor:pointer;' : 'cursor:default;';
+    const ringStyle = selected
+      ? `box-shadow:inset 0 -2px 0 ${col};`
+      : '';
+
+    return `
+      <div data-stage="${stage}"
+           style="padding:14px 8px;text-align:center;${borderR}${bgStyle}${ringStyle}${cursor}position:relative;transition:background .15s,box-shadow .15s;user-select:none"
+           onclick="toggleStageFilter('${stage}', ${active})"
+           onmouseover="if(${active})this.style.background='${col}10'"
+           onmouseout="this.style.background='${selected ? col + '18' : ''}'">
+
+        <!-- active indicator bar at top -->
+        <div style="height:3px;border-radius:2px;margin-bottom:10px;
+             background:${active ? col : 'var(--border)'};
+             ${selected ? 'opacity:1' : 'opacity:.7'}"></div>
+
+        <!-- pcs number -->
+        <p class="mono" style="font-size:1.4rem;font-weight:700;line-height:1;
+           color:${active ? col : 'var(--border)'}">
+          ${active ? pcs.toLocaleString('id-ID') : '—'}
+        </p>
+        <p style="font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:.04em">pcs</p>
+
+        <!-- stage name -->
+        <p style="font-size:9px;font-weight:600;margin-top:6px;text-transform:uppercase;
+           letter-spacing:.05em;color:${active ? col : 'var(--border)'}">
+          ${stage}
+        </p>
+
+        <!-- log count / selected label -->
+        ${active
+          ? selected
+            ? `<p style="font-size:9px;font-weight:600;color:${col};margin-top:3px">▲ filter aktif</p>`
+            : `<p style="font-size:9px;color:var(--muted);margin-top:3px">${logs} log · klik</p>`
+          : '<p style="font-size:9px;color:var(--border);margin-top:3px">—</p>'}
+      </div>`;
+  }).join('');
+
+  // Show "no activity" message if nothing today
+  if (!hasAny) {
+    const feedEl = $('td-feed');
+    if (feedEl && !feedEl.innerHTML.includes('Belum ada')) {
+      feedEl.innerHTML = '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
+    }
+  }
+}
+
+// Toggle stage filter on activity feed
+function toggleStageFilter(stage, active) {
+  if (!active) return; // inactive stages are not clickable
+
+  if (_todaySelectedStage === stage) {
+    // Second click → deselect, show all
+    _todaySelectedStage = null;
+  } else {
+    _todaySelectedStage = stage;
+  }
+
+  // Re-render grid to update selected state
+  // Rebuild from stored stages data
+  const stagesData = _todayStagesCache || [];
+  renderTodayStageGrid(stagesData);
+
+  // Re-render feed with filter
+  renderTodayFeed(_todayLogsCache || [], _todaySelectedStage);
+}
+
+let _todayAutoRefresh = null;
+
+// Cache for filter re-render without re-fetch
+let _todayLogsCache   = [];
+let _todayStagesCache = [];
+
+// Standalone feed renderer — accepts optional stageFilter
+function renderTodayFeed(logs, stageFilter) {
+  const feedEl = $('td-feed');
+  if (!feedEl) return;
+
+  // Update feed header label
+  const feedHeader = $('td-feed-label');
+  if (feedHeader) {
+    feedHeader.textContent = stageFilter
+      ? `Log Hari Ini — ${stageFilter}`
+      : 'Semua Aktivitas Hari Ini';
+  }
+
+  const filtered = stageFilter
+    ? logs.filter(l => l.stage === stageFilter)
+    : logs;
+
+  if (!filtered.length) {
+    feedEl.innerHTML = stageFilter
+      ? `<div style="padding:28px;text-align:center;color:var(--muted);font-size:13px">Tidak ada log untuk tahap <strong style="color:var(--text)">${stageFilter}</strong> hari ini</div>`
+      : '<div style="padding:32px;text-align:center;color:var(--muted);font-size:13px">Belum ada aktivitas produksi hari ini</div>';
+    return;
+  }
+
+  feedEl.innerHTML = filtered.map((l, idx) => {
+    const col    = STAGE_COLORS[l.stage] || 'var(--muted)';
+    const time   = new Date(l.created_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+    const isLast = idx === filtered.length - 1;
+
+    return `
+      <div style="display:flex;gap:12px;padding:12px 16px;border-bottom:${isLast ? 'none' : '1px solid var(--border)'}">
+        <!-- Timeline dot -->
+        <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;padding-top:2px">
+          <div style="width:10px;height:10px;border-radius:50%;background:${col};flex-shrink:0;margin-top:2px"></div>
+          ${!isLast ? `<div style="width:1px;flex:1;background:var(--border);margin-top:4px"></div>` : ''}
+        </div>
+        <!-- Content -->
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+                <span style="font-size:11px;font-weight:600;padding:1px 7px;border-radius:4px;background:${col}20;color:${col};border:1px solid ${col}40;white-space:nowrap">${l.stage}</span>
+                <span class="mono" style="font-size:13px;font-weight:700;color:var(--text)">${parseInt(l.qty_processed).toLocaleString('id-ID')} pcs</span>
+              </div>
+              <p style="font-size:13px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${l.product_name}</p>
+              <p class="mono" style="font-size:10px;color:var(--muted);margin-top:1px">${l.order_code}</p>
+            </div>
+            <div style="text-align:right;flex-shrink:0">
+              <p class="mono" style="font-size:12px;font-weight:600;color:var(--text)">${time}</p>
+              <p style="font-size:10px;color:var(--muted);margin-top:1px">${l.operator_name || '—'}</p>
+            </div>
+          </div>
+          ${l.note ? `<p style="font-size:11px;color:var(--muted);margin-top:4px;font-style:italic">${l.note}</p>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+async function loadTodayReport() {
+  try {
+    const data = await api('/dashboard/today');
+    const { logs, stages } = data;
+
+    // Cache for click-filter re-render
+    _todayLogsCache   = logs   || [];
+    _todayStagesCache = stages || [];
+
+    // Reset stage filter on full reload
+    _todaySelectedStage = null;
+
+    // ── Update timestamp
+    const now = new Date();
+    $('today-updated').textContent =
+      'Diperbarui ' + now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+
+    // ── Today stage grid
+    renderTodayStageGrid(_todayStagesCache);
+
+    // ── Activity feed (no filter on initial load)
+    renderTodayFeed(_todayLogsCache, null);
+
+  } catch (err) {
+    toast(err.message, 'error');
+  }
+}
+
+// Pulse the live dot
+function startLivePulse() {
+  let on = true;
+  setInterval(() => {
+    const dot = $('live-dot');
+    if (dot) { dot.style.opacity = on ? '1' : '0.3'; on = !on; }
+  }, 1200);
+}
+
+
+// ══════════════════════════════════════════════════════════════
+// SHOPEE STOCK
+// ══════════════════════════════════════════════════════════════
+
+// Minimum stock per product (stored in localStorage, editable per product)
+function getMinStock(item_id) {
+  const saved = localStorage.getItem(`shopee_min_${item_id}`);
+  if (saved) return parseInt(saved);
+  // fallback to global setting
+  return parseInt($('shopee-min-global')?.value || 10);
+}
+function setMinStock(item_id, val) {
+  localStorage.setItem(`shopee_min_${item_id}`, val);
+}
+function saveMinStock() {
+  // when global changes, reload display
+  if (_shopeeCache) renderShopeeData(_shopeeCache);
+}
+
+let _shopeeCache = null;
+
+// Shopee product URLs
+const SHOPEE_URLS = {
+  18765357002: 'https://shopee.co.id/Koncoturuu-Daster-Bigsize-Nyaman-Motif-Baru-i.242304264.18765357002',
+  26341263082: 'https://shopee.co.id/Koncoturuu-Jennie-Daster-Busui-Friendly-Rayon-Viscose-i.242304264.26341263082',
+  42609291065: 'https://shopee.co.id/Koncoturu-Sabina-Daster-Daster-Bigsize-Daster-Busui-i.242304264.42609291065',
+  24457420750: 'https://shopee.co.id/Koncoturuu-Kumala-daster-long-daster-lengan-panjang-i.242304264.24457420750',
+  55654601320: 'https://shopee.co.id/Koncoturu-Nara-Piyama-Piyama-busui-friendly-i.242304264.55654601320',
+  4033942454:  'https://shopee.co.id/Koncoturuu-Gamila-Piyama-Piyama-Rayon-Berkualitas-i.242304264.4033942454',
+};
+
+async function loadShopeeStock() {
+  // Show loading state
+  const body = $('shopee-stock-body');
+  const grid = $('shopee-products-grid');
+  if (body) body.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">⏳ Mengambil data stok dari Shopee...</div>';
+  if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:24px">Memuat...</div>';
+
+  try {
+    const data = await api('/shopee/stock');
+    _shopeeCache = data;
+
+    // Update timestamp
+    const ts = new Date(data.fetched_at).toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    const updEl = $('shopee-updated');
+    if (updEl) updEl.textContent = 'Diperbarui ' + ts;
+
+    renderShopeeData(data);
+  } catch (err) {
+    const errMsg = `<div style="padding:24px;text-align:center;color:var(--danger);font-size:13px">
+      ⚠️ Gagal mengambil data Shopee: ${err.message}<br>
+      <span style="color:var(--muted);font-size:11px;margin-top:4px;display:block">Coba refresh ulang beberapa saat lagi</span>
+    </div>`;
+    if (body) body.innerHTML = errMsg;
+    if (grid) grid.innerHTML = errMsg;
+  }
+}
+
+function renderShopeeData(data) {
+  renderShopeeDashboardWidget(data.products);
+  renderShopeeProductsPage(data.products);
+}
+
+// ── Dashboard mini widget ──────────────────────────────────────
+function renderShopeeDashboardWidget(products) {
+  const body = $('shopee-stock-body');
+  if (!body) return;
+
+  const rows = products.map(p => {
+    if (p.error) {
+      return `<div style="display:flex;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);align-items:center">
+        <span style="font-size:13px">${p.name}</span>
+        <span style="font-size:11px;color:var(--danger)">Error: ${p.error}</span>
+      </div>`;
+    }
+
+    const min   = getMinStock(p.item_id);
+    const stock = p.total_stock;
+    const isLow = stock !== null && stock <= min;
+    const isWarn= stock !== null && stock <= min * 2 && !isLow;
+    const col   = isLow ? 'var(--danger)' : isWarn ? 'var(--accent)' : 'var(--success)';
+    const icon  = isLow ? '🔴' : isWarn ? '🟡' : '🟢';
+
+    // Variant breakdown (top 4 by lowest stock first)
+    const sortedVars = [...(p.variants || [])].sort((a,b) => a.stock - b.stock);
+    const varHTML = sortedVars.slice(0,4).map(v => {
+      const vLow = v.stock <= Math.ceil(min / (p.variants.length || 1));
+      return `<span style="font-size:10px;padding:1px 6px;border-radius:3px;
+        background:${vLow ? 'rgba(239,68,68,.12)' : 'rgba(255,255,255,.04)'};
+        color:${vLow ? '#f87171' : 'var(--muted)'}">
+        ${v.name}: ${v.stock}
+      </span>`;
+    }).join('');
+
+    const moreVars = sortedVars.length > 4 ? `<span style="font-size:10px;color:var(--border)">+${sortedVars.length - 4} lainnya</span>` : '';
+
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);gap:12px;flex-wrap:wrap;cursor:pointer"
+           onclick="navigate('shopee')"
+           onmouseover="this.style.background='rgba(255,255,255,.02)'"
+           onmouseout="this.style.background=''">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-size:13px;font-weight:500">${p.name}</span>
+            ${isLow ? '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(239,68,68,.15);color:#f87171;font-weight:600">STOK RENDAH</span>' : ''}
+            ${isWarn ? '<span style="font-size:10px;padding:1px 6px;border-radius:3px;background:rgba(240,165,0,.15);color:var(--accent);font-weight:600">PERLU PERHATIAN</span>' : ''}
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px">${varHTML}${moreVars}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <p class="mono" style="font-size:1.3rem;font-weight:700;color:${col}">${stock !== null ? stock.toLocaleString('id-ID') : '?'}</p>
+          <p style="font-size:9px;color:var(--muted)">total stok</p>
+        </div>
+      </div>`;
+  });
+
+  body.innerHTML = rows.join('') || '<div style="padding:24px;text-align:center;color:var(--muted)">Tidak ada data produk</div>';
+}
+
+// ── Full Shopee page: per-product card with all variants ───────
+function renderShopeeProductsPage(products) {
+  const grid = $('shopee-products-grid');
+  if (!grid) return;
+
+  grid.innerHTML = products.map(p => {
+    if (p.error) {
+      return `<div class="card p-5">
+        <p class="font-medium mb-2">${p.name}</p>
+        <p style="color:var(--danger);font-size:12px">⚠️ ${p.error}</p>
+      </div>`;
+    }
+
+    const min    = getMinStock(p.item_id);
+    const stock  = p.total_stock;
+    const isLow  = stock !== null && stock <= min;
+    const isWarn = stock !== null && stock <= min * 2 && !isLow;
+    const borderCol = isLow ? 'var(--danger)' : isWarn ? 'var(--accent)' : 'var(--success)';
+    const url    = SHOPEE_URLS[p.item_id] || '#';
+
+    // All variants sorted low→high
+    const sortedVars = [...(p.variants || [])].sort((a,b) => a.stock - b.stock);
+    const varRows = sortedVars.map(v => {
+      const perMin = Math.ceil(min / (p.variants.length || 1));
+      const vLow   = v.stock <= perMin;
+      const vWarn  = v.stock <= perMin * 2 && !vLow;
+      return `
+        <div style="display:flex;justify-content:space-between;align-items:center;
+             padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:${vLow ? '#f87171' : vWarn ? 'var(--accent)' : 'var(--text)'}">${v.name}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="width:60px;height:4px;border-radius:2px;background:var(--border);overflow:hidden">
+              <div style="height:100%;width:${Math.min(100, (v.stock / Math.max(stock,1)) * 100)}%;
+                   background:${vLow ? 'var(--danger)' : vWarn ? 'var(--accent)' : 'var(--success)'}"></div>
+            </div>
+            <span class="mono" style="font-size:12px;font-weight:600;color:${vLow ? 'var(--danger)' : vWarn ? 'var(--accent)' : 'var(--text)'}">
+              ${v.stock}
+            </span>
+            ${vLow ? '<span style="font-size:9px;color:var(--danger)">RENDAH</span>' : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="card overflow-hidden" style="border-top:3px solid ${borderCol}">
+        <!-- Card Header -->
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+            <div>
+              <p class="font-semibold text-sm">${p.name}</p>
+              <a href="${url}" target="_blank"
+                 style="font-size:10px;color:var(--muted);text-decoration:none"
+                 onclick="event.stopPropagation()">
+                Lihat di Shopee ↗
+              </a>
+            </div>
+            <div style="text-align:right">
+              <p class="mono" style="font-size:1.6rem;font-weight:700;color:${borderCol};line-height:1">${stock !== null ? stock.toLocaleString('id-ID') : '?'}</p>
+              <p style="font-size:9px;color:var(--muted)">total stok</p>
+            </div>
+          </div>
+          ${isLow  ? '<div style="margin-top:8px;padding:5px 10px;border-radius:5px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);font-size:11px;color:#f87171;font-weight:600">🔴 Stok sangat rendah — perlu segera masuk antrian produksi!</div>' : ''}
+          ${isWarn ? '<div style="margin-top:8px;padding:5px 10px;border-radius:5px;background:rgba(240,165,0,.1);border:1px solid rgba(240,165,0,.3);font-size:11px;color:var(--accent);font-weight:600">🟡 Stok mulai menipis — pertimbangkan produksi segera</div>' : ''}
+        </div>
+
+        <!-- Variants -->
+        <div style="padding:10px 16px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <p style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)">Stok per Varian</p>
+            <div style="display:flex;align-items:center;gap:6px">
+              <label style="font-size:10px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0">Min Alert:</label>
+              <input type="number" value="${min}" min="1" style="width:55px;padding:3px 6px;font-size:11px"
+                     onchange="setMinStock(${p.item_id}, this.value); if(_shopeeCache) renderShopeeData(_shopeeCache)" />
+            </div>
+          </div>
+          ${varRows}
+        </div>
+      </div>`;
+  }).join('');
+}
+
 // ── BOOT ────────────────────────────────────────────────────
 checkAuth();
+
+// Start live dot pulse after page loads
+window.addEventListener('load', () => {
+  startLivePulse();
+  // Auto-refresh today report every 60 seconds when on dashboard
+  setInterval(() => {
+    const dashPage = $('page-dashboard');
+    if (dashPage && !dashPage.classList.contains('hidden')) {
+      loadTodayReport();
+    }
+  }, 60000);
+});
 </script>
 </body>
 </html>

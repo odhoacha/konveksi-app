@@ -8,6 +8,7 @@ const initDB = require('./db/init');
 // ─── MIDDLEWARE ─────────────────────────
 app.use(cors());
 app.use(express.json());
+app.use('/api/shopee', require('./routes/shopee'));
 
 // ─── STATIC FRONTEND ─────────────────────
 app.use(express.static(path.join(__dirname, 'frontend')));
